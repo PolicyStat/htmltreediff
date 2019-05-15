@@ -10,6 +10,7 @@ from xml.dom.pulldom import SAX2DOM
 import lxml.html
 import lxml.etree
 import lxml.sax
+from lxml.etree import ParserError
 
 
 def parse_lxml_dom(xml, strict_xml=True):
@@ -19,7 +20,7 @@ def parse_lxml_dom(xml, strict_xml=True):
         parse_func = lxml.html.document_fromstring
     try:
         tree = parse_func(xml)
-    except lxml.etree.XMLSyntaxError:
+    except (lxml.etree.XMLSyntaxError, ParserError):
         tree = parse_func('<body>%s</body>' % xml)
 
     handler = SAX2DOM()
