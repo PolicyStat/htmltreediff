@@ -1,9 +1,12 @@
+from __future__ import print_function
+
+
 """
 HTML Tree Diff
 
 Basic Usage
 >>> from htmltreediff import diff
->>> print diff('<h1>...one...</h1>', '<h1>...two...</h1>', pretty=True)
+>>> print(diff('<h1>...one...</h1>', '<h1>...two...</h1>', pretty=True))
 <h1>
   ...
   <del>one</del>

@@ -2,6 +2,8 @@ import re
 from textwrap import dedent
 from xml.dom import minidom, Node
 
+import six
+
 from htmltreediff.text import WordMatcher, split_text
 
 # DOM utilities ##
@@ -104,7 +106,7 @@ def remove_non_printing_characters(xml, replace_char=u' '):
     non_printing_chars = range(32)
     replace_chars = len(non_printing_chars) * replace_char
     translation_map = dict(zip(non_printing_chars, replace_chars))
-    return unicode(xml).translate(translation_map)
+    return six.text_type(xml).translate(translation_map)
 
 
 def remove_newlines(xml):
