@@ -24,13 +24,9 @@ def test_main():
         assert_equal(
             stream.getvalue(),
             dedent('''
-                <h1>
-                  one
-                </h1>
+                <h1>one</h1>
                 <ins>
-                  <h2>
-                    two
-                  </h2>
+                  <h2>two</h2>
                 </ins>
             ''').strip() + '\n',
         )

@@ -187,13 +187,9 @@ def test_html_diff_pretty():
             '<h1>one</h1>',
             '<h1>one</h1><h2>two</h2>',
             dedent('''
-                <h1>
-                  one
-                </h1>
+                <h1>one</h1>
                 <ins>
-                  <h2>
-                    two
-                  </h2>
+                  <h2>two</h2>
                 </ins>
             ''').strip(),
         ),

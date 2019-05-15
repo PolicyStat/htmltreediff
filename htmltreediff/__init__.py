@@ -6,12 +6,8 @@ Basic Usage
 >>> print diff('<h1>...one...</h1>', '<h1>...two...</h1>', pretty=True)
 <h1>
   ...
-  <del>
-    one
-  </del>
-  <ins>
-    two
-  </ins>
+  <del>one</del>
+  <ins>two</ins>
   ...
 </h1>
 
