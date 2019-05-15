@@ -1,11 +1,15 @@
 language: python
 install: pip install tox
 script: tox -v -e $TOX_ENV -- --verbose
+dist: xenial
+python:
+  - "3.7"
 sudo: false
 env:
-  - TOX_ENV=py26pep8
-  - TOX_ENV=py26-coverage
-  - TOX_ENV=py26
+  - TOX_ENV=py27
+  - TOX_ENV=py27-coverage
+  - TOX_ENV=py27pep8
+  - TOX_ENV=py37
 notifications:
   email:
     - development@policystat.com
