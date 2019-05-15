@@ -35,15 +35,15 @@ def multi_split(text, regexes):
     re.split().
 
     Splitting on a single regex works like normal split.
-    >>> '|'.join(multi_split('one two three', [r'\w+']))
+    >>> '|'.join(multi_split('one two three', [r'\w+']))  # noqa
     'one| |two| |three'
 
     Splitting on digits first separates the digits from their word
-    >>> '|'.join(multi_split('one234five 678', [r'\d+', r'\w+']))
+    >>> '|'.join(multi_split('one234five 678', [r'\d+', r'\w+']))  # noqa
     'one|234|five| |678'
 
     Splitting on words first keeps the word with digits intact.
-    >>> '|'.join(multi_split('one234five 678', [r'\w+', r'\d+']))
+    >>> '|'.join(multi_split('one234five 678', [r'\w+', r'\d+']))  # noqa
     'one234five| |678'
     """
     def make_regex(s):
@@ -108,6 +108,7 @@ _word_split_regexes = [
 
 def split_text(text):
     return multi_split(text, _word_split_regexes)
+
 
 _stopwords = 'a an and as at by for if in it of or so the to'
 _stopwords = set(_stopwords.strip().lower().split())

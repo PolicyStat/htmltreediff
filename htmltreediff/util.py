@@ -160,10 +160,15 @@ class HashableNode(object):
         self.node = node
 
     def __eq__(self, other):
-        return (self.node.nodeType == other.node.nodeType and
-                self.node.nodeName == other.node.nodeName and
-                self.node.nodeValue == other.node.nodeValue and
-                attribute_dict(self.node) == attribute_dict(other.node))
+        if self.node.nodeType != other.node.nodeType:
+            return False
+        if self.node.nodeName != other.node.nodeName:
+            return False
+        if self.node.nodeValue != other.node.nodeValue:
+            return False
+        if attribute_dict(self.node) != attribute_dict(other.node):
+            return False
+        return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -184,9 +189,13 @@ class HashableTree(object):
         if not hasattr(other, 'node'):
             return False
 
-        return (HashableNode(self.node) == HashableNode(other.node) and
-                [HashableTree(c) for c in self.node.childNodes] ==
-                [HashableTree(c) for c in other.node.childNodes])
+        if HashableNode(self.node) != HashableNode(other.node):
+            return False
+        self_child_nodes = [HashableTree(c) for c in self.node.childNodes]
+        other_child_nodes = [HashableTree(c) for c in other.node.childNodes]
+        if self_child_nodes != other_child_nodes:
+            return False
+        return True
 
     def __hash__(self):
         child_hashes = hash(tuple(
@@ -247,6 +256,7 @@ def remove_dom_attributes(dom):
     for node in walk_dom(dom):
         for key in attribute_dict(node).keys():
             node.attributes.removeNamedItem(key)
+
 
 _non_text_node_tags = [
     'html', 'head', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup',

@@ -127,8 +127,7 @@ def fix_tables(dom):
         distribute(tag)
     # Show table cell insertions
     tags = set()
-    for node in list(dom.getElementsByTagName('td') +
-                     dom.getElementsByTagName('th')):
+    for node in list(dom.getElementsByTagName('td') + dom.getElementsByTagName('th')):
         parent = node.parentNode
         if parent.tagName in ('ins', 'del'):
             tags.add(parent)
@@ -136,8 +135,7 @@ def fix_tables(dom):
         distribute(tag)
     # All other ins and del tags inside a table but not in a cell are invalid,
     # so remove them.
-    for node in list(dom.getElementsByTagName('ins') +
-                     dom.getElementsByTagName('del')):
+    for node in list(dom.getElementsByTagName('ins') + dom.getElementsByTagName('del')):
         parent = node.parentNode
         if parent.tagName in ['table', 'tbody', 'thead', 'tfoot', 'tr']:
             remove_node(node)
