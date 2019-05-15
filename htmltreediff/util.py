@@ -1,6 +1,9 @@
+import copy
 import re
+import sys
+from contextlib import contextmanager
 from textwrap import dedent
-from xml.dom import minidom, Node
+from xml.dom import Node
 
 import six
 
@@ -99,9 +102,8 @@ def remove_non_printing_characters(xml, replace_char=u' '):
     r'''
     Replace non-printing characters from the XML with spaces, otherwise it
     interferes with the XML parsing
-    >>> remove_non_printing_characters(
-    ...     '<p\x00>foo</p>\x01\x1f<p>bar\x20\x21</\x02p>')
-    u'<p >foo</p>  <p>bar !</ p>'
+    >>> remove_non_printing_characters('<p\x00>foo</p>\x01\x1f<p>bar\x20\x21</\x02p>') == '<p >foo</p>  <p>bar !</ p>'  # noqa
+    True
     '''
     non_printing_chars = range(32)
     replace_chars = len(non_printing_chars) * replace_char
@@ -407,12 +409,24 @@ def tree_text(node):
     return ' '.join(text)
 
 
+# I really don't like that this seems to be required. But the old way doesn't
+# work (we were setting a read-only property). I am not certain if this will
+# work in all cases, but running against more HTML blobs will certainly help
+# determine that. And that will happen soon.
+@contextmanager
+def _patch_recursion_limit():
+    limit = sys.getrecursionlimit()
+    try:
+        sys.setrecursionlimit(10000)
+        yield
+    finally:
+        sys.setrecursionlimit(limit)
+
+
 # manipulation #
 def copy_dom(dom):
-    new_dom = minidom.Document()
-    doc = new_dom.importNode(dom.documentElement, deep=True)
-    new_dom.documentElement = doc
-    return new_dom
+    with _patch_recursion_limit():
+        return copy.deepcopy(dom)
 
 
 def remove_node(node):
