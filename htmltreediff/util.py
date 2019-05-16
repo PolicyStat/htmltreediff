@@ -1,6 +1,11 @@
+import copy
 import re
+import sys
+from contextlib import contextmanager
 from textwrap import dedent
-from xml.dom import minidom, Node
+from xml.dom import Node
+
+import six
 
 from htmltreediff.text import WordMatcher, split_text
 
@@ -10,6 +15,7 @@ from xml.dom.pulldom import SAX2DOM
 import lxml.html
 import lxml.etree
 import lxml.sax
+from lxml.etree import ParserError
 
 
 def parse_lxml_dom(xml, strict_xml=True):
@@ -19,7 +25,7 @@ def parse_lxml_dom(xml, strict_xml=True):
         parse_func = lxml.html.document_fromstring
     try:
         tree = parse_func(xml)
-    except lxml.etree.XMLSyntaxError:
+    except (lxml.etree.XMLSyntaxError, ParserError):
         tree = parse_func('<body>%s</body>' % xml)
 
     handler = SAX2DOM()
@@ -96,14 +102,13 @@ def remove_non_printing_characters(xml, replace_char=u' '):
     r'''
     Replace non-printing characters from the XML with spaces, otherwise it
     interferes with the XML parsing
-    >>> remove_non_printing_characters(
-    ...     '<p\x00>foo</p>\x01\x1f<p>bar\x20\x21</\x02p>')
-    u'<p >foo</p>  <p>bar !</ p>'
+    >>> remove_non_printing_characters('<p\x00>foo</p>\x01\x1f<p>bar\x20\x21</\x02p>') == '<p >foo</p>  <p>bar !</ p>'  # noqa
+    True
     '''
     non_printing_chars = range(32)
     replace_chars = len(non_printing_chars) * replace_char
     translation_map = dict(zip(non_printing_chars, replace_chars))
-    return unicode(xml).translate(translation_map)
+    return six.text_type(xml).translate(translation_map)
 
 
 def remove_newlines(xml):
@@ -159,10 +164,15 @@ class HashableNode(object):
         self.node = node
 
     def __eq__(self, other):
-        return (self.node.nodeType == other.node.nodeType and
-                self.node.nodeName == other.node.nodeName and
-                self.node.nodeValue == other.node.nodeValue and
-                attribute_dict(self.node) == attribute_dict(other.node))
+        if self.node.nodeType != other.node.nodeType:
+            return False
+        if self.node.nodeName != other.node.nodeName:
+            return False
+        if self.node.nodeValue != other.node.nodeValue:
+            return False
+        if attribute_dict(self.node) != attribute_dict(other.node):
+            return False
+        return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -183,9 +193,13 @@ class HashableTree(object):
         if not hasattr(other, 'node'):
             return False
 
-        return (HashableNode(self.node) == HashableNode(other.node) and
-                [HashableTree(c) for c in self.node.childNodes] ==
-                [HashableTree(c) for c in other.node.childNodes])
+        if HashableNode(self.node) != HashableNode(other.node):
+            return False
+        self_child_nodes = [HashableTree(c) for c in self.node.childNodes]
+        other_child_nodes = [HashableTree(c) for c in other.node.childNodes]
+        if self_child_nodes != other_child_nodes:
+            return False
+        return True
 
     def __hash__(self):
         child_hashes = hash(tuple(
@@ -246,6 +260,7 @@ def remove_dom_attributes(dom):
     for node in walk_dom(dom):
         for key in attribute_dict(node).keys():
             node.attributes.removeNamedItem(key)
+
 
 _non_text_node_tags = [
     'html', 'head', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup',
@@ -394,12 +409,24 @@ def tree_text(node):
     return ' '.join(text)
 
 
+# I really don't like that this seems to be required. But the old way doesn't
+# work (we were setting a read-only property). I am not certain if this will
+# work in all cases, but running against more HTML blobs will certainly help
+# determine that. And that will happen soon.
+@contextmanager
+def _patch_recursion_limit():
+    limit = sys.getrecursionlimit()
+    try:
+        sys.setrecursionlimit(10000)
+        yield
+    finally:
+        sys.setrecursionlimit(limit)
+
+
 # manipulation #
 def copy_dom(dom):
-    new_dom = minidom.Document()
-    doc = new_dom.importNode(dom.documentElement, deep=True)
-    new_dom.documentElement = doc
-    return new_dom
+    with _patch_recursion_limit():
+        return copy.deepcopy(dom)
 
 
 def remove_node(node):

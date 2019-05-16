@@ -1,6 +1,8 @@
 import difflib
 from xml.dom import Node
 
+import six
+
 from htmltreediff.text import is_text_junk
 from htmltreediff.util import (
     copy_dom,
@@ -261,7 +263,7 @@ def get_opcodes(matching_blocks):
 
 
 def _is_junk(hashable_node):
-    if isinstance(hashable_node, basestring):
+    if isinstance(hashable_node, six.string_types):
         return is_text_junk(hashable_node)
     # Nodes with no text or just whitespace are junk.
     for descendant in walk_dom(hashable_node.node):

@@ -1198,13 +1198,12 @@ def reverse_cases(cases):
             reverse_changes_html(case.target_changes),
             reverse_edit_script(case.edit_script),
         )
+
+
 reverse_test_cases = list(reverse_cases(test_cases))
 
 # Combined cases
-all_test_cases = (test_cases +
-                  reverse_test_cases +
-                  one_way_test_cases +
-                  insane_test_cases)
+all_test_cases = (test_cases + reverse_test_cases + one_way_test_cases + insane_test_cases)
 
 
 def assert_html_equal(a_html, b_html):
