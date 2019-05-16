@@ -410,7 +410,7 @@ def tree_text(node):
 def copy_dom(dom):
     new_dom = minidom.Document()
     doc = new_dom.importNode(dom.documentElement, deep=True)
-    new_dom.childNodes = [doc]
+    new_dom.appendChild(doc)
     return new_dom
 
 
