@@ -1,9 +1,6 @@
-import copy
 import re
-import sys
-from contextlib import contextmanager
 from textwrap import dedent
-from xml.dom import Node
+from xml.dom import minidom, Node
 
 import six
 
@@ -409,24 +406,12 @@ def tree_text(node):
     return ' '.join(text)
 
 
-# I really don't like that this seems to be required. But the old way doesn't
-# work (we were setting a read-only property). I am not certain if this will
-# work in all cases, but running against more HTML blobs will certainly help
-# determine that. And that will happen soon.
-@contextmanager
-def _patch_recursion_limit():
-    limit = sys.getrecursionlimit()
-    try:
-        sys.setrecursionlimit(10000)
-        yield
-    finally:
-        sys.setrecursionlimit(limit)
-
-
 # manipulation #
 def copy_dom(dom):
-    with _patch_recursion_limit():
-        return copy.deepcopy(dom)
+    new_dom = minidom.Document()
+    doc = new_dom.importNode(dom.documentElement, deep=True)
+    new_dom.childNodes = [doc]
+    return new_dom
 
 
 def remove_node(node):
