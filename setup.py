@@ -24,9 +24,10 @@ def get_requirements(path):
         if line:
             yield line
 
+
 setup(
     name="html-tree-diff",
-    version="0.1.2",
+    version="0.1.3",
     description="Structure-aware diff for html and xml documents",
     author="Christian Oudard",
     author_email="christian.oudard@gmail.com",
