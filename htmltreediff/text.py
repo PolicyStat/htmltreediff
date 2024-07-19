@@ -14,13 +14,13 @@ def full_split(text, regex):
     ['word']
     """
     while text:
-        m = regex.search(text)
-        if not m:
+        matcher = regex.search(text)
+        if not matcher:
             yield text
             break
-        left = text[:m.start()]
-        middle = text[m.start():m.end()]
-        right = text[m.end():]
+        left = text[:matcher.start()]
+        middle = text[matcher.start():matcher.end()]
+        right = text[matcher.end():]
         if left:
             yield left
         if middle:
