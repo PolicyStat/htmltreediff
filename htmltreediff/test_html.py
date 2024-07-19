@@ -5,7 +5,7 @@ from nose.tools import assert_equal
 from htmltreediff.html import diff
 from htmltreediff.tests import assert_html_equal
 from htmltreediff.changes import distribute
-from htmltreediff.html import fix_lists, fix_tables
+from htmltreediff.html import add_class_to_empty_del_tags, fix_lists, fix_tables
 from htmltreediff.util import (
     parse_minidom,
     minidom_tostring,
@@ -595,3 +595,34 @@ def test_fix_tables():
             assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
         test.description = 'test_fix_tables - %s' % test_name
         yield test
+
+
+def test_add_class_to_empty_del_tags():
+    cases = [
+        (
+            'empty del tag',
+            '<del></del>',
+            '<del class="empty"/>',
+        ),
+        (
+            'del tag with space',
+            '<del> </del>',
+            '<del class="empty"> </del>',
+        ),
+        (
+            'del tag with child',
+            '<del> <p> </p> </del>',
+            '<del> <p> </p> </del>',
+        ),
+        (
+            'del tag with spaces and characters',
+            '<del> abc </del>',
+            '<del> abc </del>',
+        ),
+
+    ]
+    for test_name, test_input, expected_result in cases:
+        def test():
+            dom = parse_minidom(test_input, strict_xml=True)
+            add_class_to_empty_del_tags(dom)
+            assert_html_equal(minidom_tostring(dom), expected_result)
