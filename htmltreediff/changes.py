@@ -65,7 +65,7 @@ def add_changes_markup(dom, ins_nodes, del_nodes):
     # Perform post-processing and cleanup.
     remove_nesting(dom, 'del')
     remove_nesting(dom, 'ins')
-    sort_del_before_ins(dom)
+    sort_nodes(dom)
     merge_adjacent(dom, 'del')
     merge_adjacent(dom, 'ins')
 
@@ -85,7 +85,7 @@ def remove_nesting(dom, tag_name):
                 break
 
 
-def sort_nodes(dom, cmp_func):
+def sort_nodes(dom, cmp_func=node_compare):
     """
     Sort the nodes of the dom in-place, based on a comparison function.
     """
@@ -95,10 +95,6 @@ def sort_nodes(dom, cmp_func):
         while prev_sib and cmp_func(prev_sib, node) == 1:
             node.parentNode.insertBefore(node, prev_sib)
             prev_sib = node.previousSibling
-
-
-def sort_del_before_ins(dom):
-    sort_nodes(dom, cmp_func=node_compare)
 
 
 def merge_adjacent(dom, tag_name):

@@ -2,7 +2,7 @@ from htmltreediff.diff_core import Differ
 from htmltreediff.edit_script_runner import EditScriptRunner
 from htmltreediff.changes import (
     split_text_nodes,
-    sort_del_before_ins,
+    sort_nodes,
 )
 from htmltreediff.util import (
     attribute_dict,
@@ -43,7 +43,7 @@ def reverse_changes(dom):
             node.tagName = 'ins'
         elif node.tagName == 'ins':
             node.tagName = 'del'
-    sort_del_before_ins(dom)
+    sort_nodes(dom)
 
 
 def get_edit_script(old_html, new_html):
