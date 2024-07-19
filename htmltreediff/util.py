@@ -95,7 +95,7 @@ def remove_comments(xml):
     return regex.sub('', xml)
 
 
-def remove_non_printing_characters(xml, replace_char=u' '):
+def remove_non_printing_characters(xml, replace_char=' '):
     r'''
     Replace non-printing characters from the XML with spaces, otherwise it
     interferes with the XML parsing
@@ -241,10 +241,10 @@ def attribute_dict(node):
 
 def normalize_entities(html):
     # turn &nbsp; and aliases into normal spaces
-    html = html.replace(u'&nbsp;', u' ')
-    html = html.replace(u'&#160;', u' ')
-    html = html.replace(u'&#xA0;', u' ')
-    html = html.replace(u'\xa0', u' ')
+    html = html.replace('&nbsp;', ' ')
+    html = html.replace('&#160;', ' ')
+    html = html.replace('&#xA0;', ' ')
+    html = html.replace('\xa0', ' ')
     return html
 
 
