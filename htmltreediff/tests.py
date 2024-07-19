@@ -1030,18 +1030,18 @@ insane_test_cases = [
         '<p>line one line two</p>',
         '<p>line one line two</p>',
     ),
-#    (
-#        'ignore adding attributes',
-#        '<h1>one</h1>',
-#        '<h1 id="ignore" class="ignore">one</h1>',
-#        '<h1>one</h1>',
-#    ),
-#    (
-#        'ignore deleting attributes',
-#        '<h1 id="ignore" class="ignore">one</h1>',
-#        '<h1>one</h1>',
-#        '<h1 id="ignore" class="ignore">one</h1>',
-#    ),
+    # (
+    #     'ignore adding attributes',
+    #     '<h1>one</h1>',
+    #     '<h1 id="ignore" class="ignore">one</h1>',
+    #     '<h1>one</h1>',
+    # ),
+    # (
+    #     'ignore deleting attributes',
+    #     '<h1 id="ignore" class="ignore">one</h1>',
+    #     '<h1>one</h1>',
+    #     '<h1 id="ignore" class="ignore">one</h1>',
+    # ),
     (
         'whitespace changes in a table with colspan',
         '''
