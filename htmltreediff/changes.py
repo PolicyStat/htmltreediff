@@ -124,17 +124,3 @@ def distribute(node):
     tag_name = node.tagName
     for c in children:
         wrap_inner(c, tag_name)
-
-
-def _strip_changes_new(node):
-    for ins_node in node.getElementsByTagName('ins'):
-        unwrap(ins_node)
-    for del_node in node.getElementsByTagName('del'):
-        remove_node(del_node)
-
-
-def _strip_changes_old(node):
-    for ins_node in node.getElementsByTagName('ins'):
-        remove_node(ins_node)
-    for del_node in node.getElementsByTagName('del'):
-        unwrap(del_node)

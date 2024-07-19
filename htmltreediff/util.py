@@ -253,12 +253,6 @@ def remove_xml_declaration(xml):
     return re.sub(r'<\?xml.*\?>', '', xml).strip()
 
 
-def remove_dom_attributes(dom):
-    for node in walk_dom(dom):
-        for key in attribute_dict(node).keys():
-            node.attributes.removeNamedItem(key)
-
-
 _non_text_node_tags = [
     'html', 'head', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup',
     'col', 'ul', 'ol', 'dl', 'select', 'img', 'br', 'hr',
