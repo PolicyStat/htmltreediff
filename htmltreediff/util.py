@@ -234,7 +234,7 @@ def attribute_dict(node):
     if not node.attributes:
         return {}
     d = dict(node.attributes)
-    for key, node in list(d.items()):
+    for key, node in d.items():
         d[key] = node.value
     return d
 
