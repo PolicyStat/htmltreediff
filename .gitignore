@@ -1,7 +1,14 @@
+__pycache__/
+.vscode
 *.pyc
+*~
+.DS\_Store
+.env
+.direnv
 .coverage
 
 build
 dist
 *.egg-info
 .tox
+.workflow
