@@ -626,3 +626,5 @@ def test_add_class_to_empty_del_tags():
             dom = parse_minidom(test_input, strict_xml=True)
             add_class_to_empty_del_tags(dom)
             assert_html_equal(minidom_tostring(dom), expected_result)
+        test.description = 'test_add_class_to_empty_del_tags - %s' % test_name
+        yield test
