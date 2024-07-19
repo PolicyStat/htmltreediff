@@ -153,7 +153,7 @@ def add_class_to_empty_del_tags(dom):
             for child in node.childNodes:
                 if child.nodeType == node.TEXT_NODE:
                     # Confirm that the text is all whitespace
-                    if not re.match('^\s*$', child.nodeValue):
+                    if not re.match(r'^\s*$', child.nodeValue):
                         all_blank = False
                         break
                 else:
