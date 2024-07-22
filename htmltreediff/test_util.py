@@ -2,15 +2,15 @@ from htmltreediff.diff_core import Differ
 from htmltreediff.edit_script_runner import EditScriptRunner
 from htmltreediff.changes import (
     split_text_nodes,
-    sort_del_before_ins,
-    _strip_changes_new,
-    _strip_changes_old,
+    sort_nodes,
 )
 from htmltreediff.util import (
+    attribute_dict,
     minidom_tostring,
     node_compare,
     parse_minidom,
-    remove_dom_attributes,
+    remove_node,
+    unwrap,
     walk_dom,
 )
 
@@ -18,16 +18,14 @@ from htmltreediff.util import (
 def reverse_edit_script(edit_script):
     if edit_script is None:
         return None
-
-    def opposite_action(action):
-        if action == 'delete':
-            return 'insert'
-        elif action == 'insert':
-            return 'delete'
+    opposite_command = {
+        'insert': 'delete',
+        'delete': 'insert',
+    }
     reverse_script = []
     for action, location, node_properties in reversed(edit_script):
         reverse_script.append(
-            (opposite_action(action), location, node_properties),
+            (opposite_command[action], location, node_properties),
         )
     return reverse_script
 
@@ -45,7 +43,7 @@ def reverse_changes(dom):
             node.tagName = 'ins'
         elif node.tagName == 'ins':
             node.tagName = 'del'
-    sort_del_before_ins(dom)
+    sort_nodes(dom)
 
 
 def get_edit_script(old_html, new_html):
@@ -64,6 +62,20 @@ def html_patch(old_html, edit_script):
     return minidom_tostring(runner.run_edit_script())
 
 
+def _strip_changes_new(node):
+    for ins_node in node.getElementsByTagName('ins'):
+        unwrap(ins_node)
+    for del_node in node.getElementsByTagName('del'):
+        remove_node(del_node)
+
+
+def _strip_changes_old(node):
+    for ins_node in node.getElementsByTagName('ins'):
+        remove_node(ins_node)
+    for del_node in node.getElementsByTagName('del'):
+        unwrap(del_node)
+
+
 def strip_changes_old(html):
     dom = parse_minidom(html)
     _strip_changes_old(dom)
@@ -74,6 +86,12 @@ def strip_changes_new(html):
     dom = parse_minidom(html)
     _strip_changes_new(dom)
     return minidom_tostring(dom)
+
+
+def remove_dom_attributes(dom):
+    for node in walk_dom(dom):
+        for key in attribute_dict(node).keys():
+            node.attributes.removeNamedItem(key)
 
 
 def remove_attributes(html):

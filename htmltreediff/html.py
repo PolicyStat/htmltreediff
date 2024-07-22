@@ -11,6 +11,8 @@ from htmltreediff.util import (
 )
 from htmltreediff.changes import dom_diff, distribute
 
+import re
+
 
 def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False):
     """Show the differences between the old and new html document, as html.
@@ -39,6 +41,7 @@ def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False):
     if not plaintext:
         fix_lists(dom)
         fix_tables(dom)
+        add_class_to_empty_del_tags(dom)
 
     # Only return html for the document body contents.
     body_elements = dom.getElementsByTagName('body')
@@ -139,3 +142,25 @@ def fix_tables(dom):
         parent = node.parentNode
         if parent.tagName in ['table', 'tbody', 'thead', 'tfoot', 'tr']:
             remove_node(node)
+
+
+def add_class_to_empty_del_tags(dom):
+    for node in dom.getElementsByTagName('del'):
+        if not node.hasChildNodes():
+            node.setAttribute('class', 'empty')
+        else:
+            all_blank = True
+            for child in node.childNodes:
+                if child.nodeType == node.TEXT_NODE:
+                    # Confirm that the text is all whitespace
+                    if not re.match(r'^\s*$', child.nodeValue):
+                        all_blank = False
+                        break
+                else:
+                    # will not mark del tags with child elements
+                    # For future improvement: search for any nonwhitespace text
+                    # or block element that is expected to be visible
+                    all_blank = False
+                    break
+            if all_blank:
+                node.setAttribute('class', 'empty')

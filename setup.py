@@ -14,8 +14,8 @@ except ImportError:
 long_description = codecs.open("README.rst", "r", "utf-8").read()
 
 
-def strip_comments(l):
-    return l.split('#', 1)[0].strip()
+def strip_comments(line):
+    return line.split('#', 1)[0].strip()
 
 
 def get_requirements(path):
@@ -27,11 +27,11 @@ def get_requirements(path):
 
 setup(
     name="html-tree-diff",
-    version="0.1.4",
+    version="0.3.0",
     description="Structure-aware diff for html and xml documents",
     author="Christian Oudard",
     author_email="christian.oudard@gmail.com",
-    url="http://github.com/christian-oudard/htmltreediff/",
+    url="http://github.com/PolicyStat/htmltreediff/",
     platforms=["any"],
     license="BSD",
     packages=find_packages(),

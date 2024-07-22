@@ -95,7 +95,7 @@ def remove_comments(xml):
     return regex.sub('', xml)
 
 
-def remove_non_printing_characters(xml, replace_char=u' '):
+def remove_non_printing_characters(xml, replace_char=' '):
     r'''
     Replace non-printing characters from the XML with spaces, otherwise it
     interferes with the XML parsing
@@ -234,29 +234,23 @@ def attribute_dict(node):
     if not node.attributes:
         return {}
     d = dict(node.attributes)
-    for key, node in list(d.items()):
+    for key, node in d.items():
         d[key] = node.value
     return d
 
 
 def normalize_entities(html):
     # turn &nbsp; and aliases into normal spaces
-    html = html.replace(u'&nbsp;', u' ')
-    html = html.replace(u'&#160;', u' ')
-    html = html.replace(u'&#xA0;', u' ')
-    html = html.replace(u'\xa0', u' ')
+    html = html.replace('&nbsp;', ' ')
+    html = html.replace('&#160;', ' ')
+    html = html.replace('&#xA0;', ' ')
+    html = html.replace('\xa0', ' ')
     return html
 
 
 def remove_xml_declaration(xml):
     # remove the xml declaration, it messes up diffxml
     return re.sub(r'<\?xml.*\?>', '', xml).strip()
-
-
-def remove_dom_attributes(dom):
-    for node in walk_dom(dom):
-        for key in attribute_dict(node).keys():
-            node.attributes.removeNamedItem(key)
 
 
 _non_text_node_tags = [
