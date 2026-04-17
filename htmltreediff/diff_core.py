@@ -122,12 +122,17 @@ class Differ():
         fuzzy_matching_blocks = [(0, 0, 0)]
         for nonmatch in gaps:
             alo, ahi, blo, bhi = nonmatch
-            sm_fuzzy = match_blocks(
-                fuzzy_match_node_hash,
-                old_children[alo:ahi],
-                new_children[blo:bhi],
-            )
-            blocks = sm_fuzzy.get_matching_blocks()
+            gap_old = old_children[alo:ahi]
+            gap_new = new_children[blo:bhi]
+            if _has_fuzzy_hash_collisions(gap_new):
+                blocks = fuzzy_match_blocks(gap_old, gap_new)
+            else:
+                sm_fuzzy = match_blocks(
+                    fuzzy_match_node_hash,
+                    gap_old,
+                    gap_new,
+                )
+                blocks = sm_fuzzy.get_matching_blocks()
             # Move blocks over to the position of the gap.
             blocks = [
                 (alo + a, blo + b, size)
@@ -281,6 +286,92 @@ def match_blocks(hash_func, old_children, new_children):
         b=[hash_func(c) for c in new_children],
     )
     return sm
+
+
+def _has_fuzzy_hash_collisions(children):
+    """Check if element children have hash collisions in fuzzy matching.
+
+    When multiple element nodes hash to the same FuzzyHashableTree value,
+    SequenceMatcher may group them incorrectly due to non-transitive equality,
+    causing misaligned matches. Text nodes use string equality (which is
+    transitive) and are not affected.
+    """
+    seen_hashes = set()
+    for c in children:
+        if is_text(c):
+            continue
+        h = hash(fuzzy_match_node_hash(c))
+        if h in seen_hashes:
+            return True
+        seen_hashes.add(h)
+    return False
+
+
+def fuzzy_match_blocks(old_children, new_children):
+    """Find matching blocks using direct pairwise fuzzy comparison.
+
+    Unlike match_blocks (which uses SequenceMatcher), this compares each
+    old-new pair individually using FuzzyHashableTree. This avoids
+    misalignment caused by FuzzyHashableTree's non-transitive equality:
+    SequenceMatcher groups elements into a dict by equality, so when A==B and
+    B==C but A!=C, elements get merged into incorrect groups and the longest
+    common subsequence is computed on wrong groupings.
+
+    This function builds an explicit pairwise match matrix and finds the LCS
+    using dynamic programming, which correctly handles non-transitive equality.
+    """
+    n = len(old_children)
+    m = len(new_children)
+
+    if n == 0 or m == 0:
+        return [(n, m, 0)]
+
+    # Build pairwise match matrix.
+    old_hashes = [fuzzy_match_node_hash(c) for c in old_children]
+    new_hashes = [fuzzy_match_node_hash(c) for c in new_children]
+    match = [[False] * m for _ in range(n)]
+    for i in range(n):
+        for j in range(m):
+            match[i][j] = (old_hashes[i] == new_hashes[j])
+
+    # Find longest common subsequence via dynamic programming.
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in range(n - 1, -1, -1):
+        for j in range(m - 1, -1, -1):
+            if match[i][j]:
+                dp[i][j] = 1 + dp[i + 1][j + 1]
+            else:
+                dp[i][j] = max(dp[i + 1][j], dp[i][j + 1])
+
+    # Traceback to find matched pairs.
+    matches = []
+    i, j = 0, 0
+    while i < n and j < m:
+        if match[i][j] and dp[i][j] == 1 + dp[i + 1][j + 1]:
+            matches.append((i, j))
+            i += 1
+            j += 1
+        elif dp[i + 1][j] >= dp[i][j + 1]:
+            i += 1
+        else:
+            j += 1
+
+    # Convert matched pairs to matching blocks (consecutive diagonal
+    # matches are grouped into a single block).
+    blocks = []
+    k = 0
+    while k < len(matches):
+        a, b = matches[k]
+        size = 1
+        while (k + size < len(matches)
+               and matches[k + size] == (a + size, b + size)):
+            size += 1
+        blocks.append((a, b, size))
+        k += size
+
+    # Add sentinel.
+    blocks.append((n, m, 0))
+    return blocks
 
 
 def get_nonmatching_blocks(matching_blocks):

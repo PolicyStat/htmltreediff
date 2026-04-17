@@ -747,6 +747,112 @@ def test_fix_tables():
         yield test
 
 
+def test_diff_focused_on_changed_cells_when_colgroup_added():
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>old value</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>new value</td></tr>'
+        '</tbody></table>'
+    )
+    result = diff(old_html, new_html)
+    # Table should not be entirely replaced.
+    assert '<del><table' not in result, result
+    # Unchanged content should appear without markup.
+    assert '<td>Alpha</td>' in result, result
+    assert '<td>unchanged</td>' in result, result
+    # Only the changed cell should have del/ins.
+    assert '<del>old</del>' in result, result
+    assert '<ins>new</ins>' in result, result
+
+
+def test_similar_rows_not_misaligned_with_colgroup():
+    """
+    When a colgroup is added and rows share boilerplate text, pairwise
+    fuzzy matching should align each old row to its positional counterpart
+    rather than misaligning due to non-transitive text similarity.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td>'
+        '<td>Rate: check</td>'
+        '<td>Long notes requiring careful monitoring'
+        ' and administration throughout procedure.</td></tr>'
+        '<tr><td>Beta</td><td>shared setup text</td>'
+        '<td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td>'
+        '<td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td>'
+        '<td>Rate: changed1</td>'
+        '<td>Long notes requiring careful monitoring'
+        ' and administration throughout procedure.</td></tr>'
+        '<tr><td>Beta</td><td>shared setup text</td>'
+        '<td>Rate: changed2</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td>'
+        '<td>Rate: changed3</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    result = diff(old_html, new_html)
+    # Row names are unchanged - should not appear in del/ins.
+    for name in ['Alpha', 'Beta', 'Gamma']:
+        assert_equal(
+            '<del>' + name not in result and '<ins>' + name not in result,
+            True,
+            'Row %s should not be misaligned: %s' % (name, result),
+        )
+    # Only the Rate column should show changes.
+    assert '<del>' in result, result
+    assert '<ins>' in result, result
+
+
+def test_similar_rows_not_misaligned_without_colgroup():
+    """
+    Same non-transitive fuzzy equality problem as above, but triggered
+    without a colgroup -- every row has a small change so no exact matches
+    exist and all rows go through fuzzy matching.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    result = diff(old_html, new_html)
+    # Row names are unchanged - should not appear in del/ins.
+    for name in ['Alpha', 'Beta', 'Gamma']:
+        assert_equal(
+            '<del>' + name not in result and '<ins>' + name not in result,
+            True,
+            'Row %s should not be misaligned: %s' % (name, result),
+        )
+    # Only the Rate column should show changes.
+    assert '<del>' in result, result
+    assert '<ins>' in result, result
+
+
 def test_add_class_to_empty_del_tags():
     cases = [
         (
