@@ -307,6 +307,62 @@ def _has_fuzzy_hash_collisions(children):
     return False
 
 
+def build_pairwise_match_matrix(old_hashes, new_hashes):
+    n = len(old_hashes)
+    m = len(new_hashes)
+    match_matrix = [[False] * m for _ in range(n)]
+    for i in range(n):
+        for j in range(m):
+            match_matrix[i][j] = (old_hashes[i] == new_hashes[j])
+    return match_matrix
+
+
+def compute_longest_common_subsequence_lengths_table(match_matrix):
+    n = len(match_matrix)
+    m = len(match_matrix[0]) if n > 0 else 0
+    lcs_lengths = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in reversed(range(n)):
+        for j in reversed(range(m)):
+            if match_matrix[i][j]:
+                lcs_lengths[i][j] = 1 + lcs_lengths[i + 1][j + 1]
+            else:
+                lcs_lengths[i][j] = max(lcs_lengths[i + 1][j], lcs_lengths[i][j + 1])
+    return lcs_lengths
+
+
+def traceback_longest_common_subsequence_matched_pairs(match_matrix, lcs_lengths):
+    n = len(match_matrix)
+    m = len(match_matrix[0]) if n > 0 else 0
+    matched_pairs = []
+    i, j = 0, 0
+    while i < n and j < m:
+        if match_matrix[i][j] and lcs_lengths[i][j] == 1 + lcs_lengths[i + 1][j + 1]:
+            matched_pairs.append((i, j))
+            i += 1
+            j += 1
+        elif lcs_lengths[i + 1][j] >= lcs_lengths[i][j + 1]:
+            i += 1
+        else:
+            j += 1
+    return matched_pairs
+
+
+def group_consecutive_pairs_into_blocks(matched_pairs, n, m):
+    blocks = []
+    k = 0
+    while k < len(matched_pairs):
+        a, b = matched_pairs[k]
+        size = 1
+        while (
+            k + size < len(matched_pairs) and matched_pairs[k + size] == (a + size, b + size)
+        ):
+            size += 1
+        blocks.append((a, b, size))
+        k += size
+    blocks.append((n, m, 0))  # sentinel
+    return blocks
+
+
 def fuzzy_match_blocks(old_children, new_children):
     """Find matching blocks using direct pairwise fuzzy comparison.
 
@@ -316,9 +372,6 @@ def fuzzy_match_blocks(old_children, new_children):
     SequenceMatcher groups elements into a dict by equality, so when A==B and
     B==C but A!=C, elements get merged into incorrect groups and the longest
     common subsequence is computed on wrong groupings.
-
-    This function builds an explicit pairwise match matrix and finds the LCS
-    using dynamic programming, which correctly handles non-transitive equality.
     """
     n = len(old_children)
     m = len(new_children)
@@ -326,52 +379,16 @@ def fuzzy_match_blocks(old_children, new_children):
     if n == 0 or m == 0:
         return [(n, m, 0)]
 
-    # Build pairwise match matrix.
     old_hashes = [fuzzy_match_node_hash(c) for c in old_children]
     new_hashes = [fuzzy_match_node_hash(c) for c in new_children]
-    match = [[False] * m for _ in range(n)]
-    for i in range(n):
-        for j in range(m):
-            match[i][j] = (old_hashes[i] == new_hashes[j])
 
-    # Find longest common subsequence via dynamic programming.
-    dp = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(n - 1, -1, -1):
-        for j in range(m - 1, -1, -1):
-            if match[i][j]:
-                dp[i][j] = 1 + dp[i + 1][j + 1]
-            else:
-                dp[i][j] = max(dp[i + 1][j], dp[i][j + 1])
-
-    # Traceback to find matched pairs.
-    matches = []
-    i, j = 0, 0
-    while i < n and j < m:
-        if match[i][j] and dp[i][j] == 1 + dp[i + 1][j + 1]:
-            matches.append((i, j))
-            i += 1
-            j += 1
-        elif dp[i + 1][j] >= dp[i][j + 1]:
-            i += 1
-        else:
-            j += 1
-
-    # Convert matched pairs to matching blocks (consecutive diagonal
-    # matches are grouped into a single block).
-    blocks = []
-    k = 0
-    while k < len(matches):
-        a, b = matches[k]
-        size = 1
-        while (k + size < len(matches)
-               and matches[k + size] == (a + size, b + size)):
-            size += 1
-        blocks.append((a, b, size))
-        k += size
-
-    # Add sentinel.
-    blocks.append((n, m, 0))
-    return blocks
+    match_matrix = build_pairwise_match_matrix(old_hashes, new_hashes)
+    lcs_lengths = compute_longest_common_subsequence_lengths_table(match_matrix)
+    matched_pairs = traceback_longest_common_subsequence_matched_pairs(
+        match_matrix,
+        lcs_lengths,
+    )
+    return group_consecutive_pairs_into_blocks(matched_pairs, n, m)
 
 
 def get_nonmatching_blocks(matching_blocks):
