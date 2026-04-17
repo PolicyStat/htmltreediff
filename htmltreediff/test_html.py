@@ -782,39 +782,26 @@ def test_similar_rows_not_misaligned_with_colgroup():
     """
     old_html = (
         '<table><tbody>'
-        '<tr><td>Alpha</td><td>shared setup text</td>'
-        '<td>Rate: check</td>'
-        '<td>Long notes requiring careful monitoring'
-        ' and administration throughout procedure.</td></tr>'
-        '<tr><td>Beta</td><td>shared setup text</td>'
-        '<td>Rate: check</td><td>Rinse.</td></tr>'
-        '<tr><td>Gamma</td><td>shared setup text</td>'
-        '<td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
         '</tbody></table>'
     )
     new_html = (
         '<table><colgroup><col/><col/><col/><col/></colgroup><tbody>'
-        '<tr><td>Alpha</td><td>shared setup text</td>'
-        '<td>Rate: changed1</td>'
-        '<td>Long notes requiring careful monitoring'
-        ' and administration throughout procedure.</td></tr>'
-        '<tr><td>Beta</td><td>shared setup text</td>'
-        '<td>Rate: changed2</td><td>Rinse.</td></tr>'
-        '<tr><td>Gamma</td><td>shared setup text</td>'
-        '<td>Rate: changed3</td><td>Rinse.</td></tr>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
         '</tbody></table>'
     )
-    result = diff(old_html, new_html)
-    # Row names are unchanged - should not appear in del/ins.
-    for name in ['Alpha', 'Beta', 'Gamma']:
-        assert_equal(
-            '<del>' + name not in result and '<ins>' + name not in result,
-            True,
-            'Row %s should not be misaligned: %s' % (name, result),
-        )
-    # Only the Rate column should show changes.
-    assert '<del>' in result, result
-    assert '<ins>' in result, result
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
 
 
 def test_similar_rows_not_misaligned_without_colgroup():
@@ -840,17 +827,14 @@ def test_similar_rows_not_misaligned_without_colgroup():
         '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
         '</tbody></table>'
     )
-    result = diff(old_html, new_html)
-    # Row names are unchanged - should not appear in del/ins.
-    for name in ['Alpha', 'Beta', 'Gamma']:
-        assert_equal(
-            '<del>' + name not in result and '<ins>' + name not in result,
-            True,
-            'Row %s should not be misaligned: %s' % (name, result),
-        )
-    # Only the Rate column should show changes.
-    assert '<del>' in result, result
-    assert '<ins>' in result, result
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
 
 
 def test_add_class_to_empty_del_tags():
