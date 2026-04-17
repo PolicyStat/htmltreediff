@@ -373,7 +373,7 @@ def fuzzy_match_blocks(old_children, new_children):
     B==C but A!=C, elements get merged into incorrect groups and the longest
     common subsequence is computed on wrong groupings.
 
-    Explaination: https://www.geeksforgeeks.org/dsa/longest-common-subsequence-dp-4/#expected-approach-1-using-bottomup-dp-tabulation-om-n-time-and-om-n-space
+    Explaination: https://www.geeksforgeeks.org/dsa/longest-common-subsequence-dp-4/#expected-approach-1-using-bottomup-dp-tabulation-om-n-time-and-om-n-space  # noqa E501
     """
     n = len(old_children)
     m = len(new_children)

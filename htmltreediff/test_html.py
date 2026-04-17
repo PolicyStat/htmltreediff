@@ -828,16 +828,16 @@ def test_similar_rows_not_misaligned_without_colgroup():
     """
     old_html = (
         '<table><tbody>'
-        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
         '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
         '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
         '</tbody></table>'
     )
     new_html = (
         '<table><tbody>'
-        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'
-        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'
-        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
         '</tbody></table>'
     )
     result = diff(old_html, new_html)
