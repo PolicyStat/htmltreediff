@@ -117,26 +117,25 @@ def fix_lists(dom):
                 wrap_inner(c, 'del')
 
 
-def distribute_ins_and_del_tags(dom, tag_names):
-    tags = set()
-    for tag_name in tag_names:
-        for node in list(dom.getElementsByTagName(tag_name)):
-            parent = node.parentNode
-            if parent.tagName in ('ins', 'del'):
-                tags.add(parent)
-    for tag in tags:
-        distribute(tag)
-
-
 def fix_tables(dom):
-    _internalize_changes_markup(dom, set(['tbody', 'thead', 'tfoot']))
-    _internalize_changes_markup(dom, set(['tr']))
     _internalize_changes_markup(dom, set(['td', 'th']))
 
-    distribute_ins_and_del_tags(dom, ['tbody', 'thead', 'tfoot'])
-    distribute_ins_and_del_tags(dom, ['tr'])
-    distribute_ins_and_del_tags(dom, ['td', 'th'])
-
+    # Show table row insertions
+    tags = set()
+    for node in list(dom.getElementsByTagName('tr')):
+        parent = node.parentNode
+        if parent.tagName in ('ins', 'del'):
+            tags.add(parent)
+    for tag in tags:
+        distribute(tag)
+    # Show table cell insertions
+    tags = set()
+    for node in list(dom.getElementsByTagName('td') + dom.getElementsByTagName('th')):
+        parent = node.parentNode
+        if parent.tagName in ('ins', 'del'):
+            tags.add(parent)
+    for tag in tags:
+        distribute(tag)
     # All other ins and del tags inside a table but not in a cell are invalid,
     # so remove them.
     for node in list(dom.getElementsByTagName('ins') + dom.getElementsByTagName('del')):
