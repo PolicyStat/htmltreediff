@@ -8,7 +8,7 @@ from htmltreediff.util import (
     copy_dom,
     HashableTree,
     FuzzyHashableTree,
-    is_element,
+    dom_node_in_table_context,
     is_text,
     get_child,
     get_location,
@@ -17,13 +17,6 @@ from htmltreediff.util import (
     attribute_dict,
     walk_dom,
 )
-
-# Tags that constitute a table structure. The fuzzy LCS diff path is
-# restricted to children of these elements to avoid O(n*m) cost on large
-# non-table documents.
-TABLE_ELEMENT_TAGS = {
-    'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'colgroup', 'col',
-}
 
 
 def match_node_hash(node):
@@ -82,13 +75,10 @@ class Differ():
         if not old_children and not new_children:
             return
 
-        tag = old_parent.tagName.lower() if is_element(old_parent) else None
-        in_table_context = tag in TABLE_ELEMENT_TAGS
-
         matching_blocks, recursion_indices = self.match_children(
             old_children,
             new_children,
-            in_table_context=in_table_context,
+            in_table_context=dom_node_in_table_context(old_parent),
         )
 
         # Apply changes for this level.

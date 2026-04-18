@@ -125,12 +125,12 @@ class WordMatcher(SequenceMatcher):
     WordMatcher is a SequenceMatcher that can measure the similarity of
     sequences of words based on the total length of matching words.
     """
-    def __init__(self, isjunk=is_text_junk, a=None, b=None):
+    def __init__(self, isjunk=is_text_junk, a=None, b=None, autojunk=True):
         if a is None:
             a = []
         if b is None:
             b = []
-        SequenceMatcher.__init__(self, isjunk, a, b)
+        SequenceMatcher.__init__(self, isjunk, a, b, autojunk=autojunk)
 
     def text_ratio(self):
         """Return a measure of the sequences' word similarity (float in [0,1]).

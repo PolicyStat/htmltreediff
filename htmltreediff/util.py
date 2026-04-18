@@ -358,12 +358,25 @@ def walk_dom(dom, elements_only=False):
     return walk(dom)
 
 
+TABLE_ELEMENT_TAGS = {
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'colgroup', 'col',
+}
+
+
+def dom_node_in_table_context(node):
+    return is_element(node) and node.tagName.lower() in TABLE_ELEMENT_TAGS
+
+
 def check_text_similarity(a_dom, b_dom, cutoff):
     """Check whether two dom trees have similar text or not."""
     a_words = list(tree_words(a_dom))
     b_words = list(tree_words(b_dom))
 
-    sm = WordMatcher(a=a_words, b=b_words)
+    # disabling autojunk gives a better diff at the cost of it potentially being slower,
+    # so limit to only tables
+    autojunk = not dom_node_in_table_context(a_dom)
+
+    sm = WordMatcher(a=a_words, b=b_words, autojunk=autojunk)
     if sm.text_ratio() >= cutoff:
         return True
     return False
