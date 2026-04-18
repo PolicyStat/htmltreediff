@@ -27,7 +27,7 @@ def get_requirements(path):
 
 setup(
     name="html-tree-diff",
-    version="0.3.1",
+    version="0.3.0",
     description="Structure-aware diff for html and xml documents",
     author="Christian Oudard",
     author_email="christian.oudard@gmail.com",
