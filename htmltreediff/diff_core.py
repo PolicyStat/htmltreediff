@@ -8,6 +8,7 @@ from htmltreediff.util import (
     copy_dom,
     HashableTree,
     FuzzyHashableTree,
+    is_element,
     is_text,
     get_child,
     get_location,
@@ -16,6 +17,13 @@ from htmltreediff.util import (
     attribute_dict,
     walk_dom,
 )
+
+# Tags that constitute a table structure. The fuzzy LCS diff path is
+# restricted to children of these elements to avoid O(n*m) cost on large
+# non-table documents.
+TABLE_ELEMENT_TAGS = {
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'colgroup', 'col',
+}
 
 
 def match_node_hash(node):
@@ -66,18 +74,21 @@ class Differ():
         # the text-similar matches and the tag-only matches, we still have more
         # work to do, so we recurse on these. The non-matching parts that
         # remain are used to output edit script entries.
-        old_children = list(
-            get_location(self.old_dom, old_location).childNodes,
-        )
+        old_parent = get_location(self.old_dom, old_location)
+        old_children = list(old_parent.childNodes)
         new_children = list(
             get_location(self.new_dom, new_location).childNodes,
         )
         if not old_children and not new_children:
             return
 
+        tag = old_parent.tagName.lower() if is_element(old_parent) else None
+        in_table_context = tag in TABLE_ELEMENT_TAGS
+
         matching_blocks, recursion_indices = self.match_children(
             old_children,
             new_children,
+            in_table_context=in_table_context,
         )
 
         # Apply changes for this level.
@@ -106,7 +117,7 @@ class Differ():
                 new_location + [new_index],
             )
 
-    def match_children(self, old_children, new_children):
+    def match_children(self, old_children, new_children, in_table_context=False):
         # Find whole-tree matches and fuzzy matches.
         sm = match_blocks(match_node_hash, old_children, new_children)
         # If the match is very poor, pretend there were no exact matching
@@ -124,7 +135,7 @@ class Differ():
             alo, ahi, blo, bhi = nonmatch
             gap_old = old_children[alo:ahi]
             gap_new = new_children[blo:bhi]
-            if _has_fuzzy_hash_collisions(gap_new):
+            if in_table_context and _has_fuzzy_hash_collisions(gap_new):
                 blocks = fuzzy_match_blocks(gap_old, gap_new)
             else:
                 sm_fuzzy = match_blocks(
@@ -373,7 +384,7 @@ def fuzzy_match_blocks(old_children, new_children):
     B==C but A!=C, elements get merged into incorrect groups and the longest
     common subsequence is computed on wrong groupings.
 
-    Explaination: https://www.geeksforgeeks.org/dsa/longest-common-subsequence-dp-4/#expected-approach-1-using-bottomup-dp-tabulation-om-n-time-and-om-n-space  # noqa E501
+    Explanation: https://www.geeksforgeeks.org/dsa/longest-common-subsequence-dp-4/#expected-approach-1-using-bottomup-dp-tabulation-om-n-time-and-om-n-space  # noqa E501
     """
     n = len(old_children)
     m = len(new_children)

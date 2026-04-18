@@ -1,3 +1,6 @@
+# coding: utf-8
+from unittest.mock import patch
+
 from nose.tools import assert_equal
 
 from htmltreediff.diff_core import (
@@ -7,11 +10,12 @@ from htmltreediff.diff_core import (
     fuzzy_match_blocks,
     group_consecutive_pairs_into_blocks,
     traceback_longest_common_subsequence_matched_pairs,
+    Differ,
 )
 from htmltreediff.util import parse_minidom
 
 
-def children_of(html):
+def get_dom_nodes(html):
     dom = parse_minidom('<section>{}</section>'.format(html))
     return list(dom.getElementsByTagName('section')[0].childNodes)
 
@@ -25,17 +29,17 @@ def test_has_fuzzy_hash_collisions_no_children():
 
 def test_has_fuzzy_hash_collisions_all_distinct_tags():
     # <p> and <h1> have different tags so different hashes — no collision
-    assert_equal(_has_fuzzy_hash_collisions(children_of('<p>a</p><h1>b</h1>')), False)
+    assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('<p>a</p><h1>b</h1>')), False)
 
 
 def test_has_fuzzy_hash_collisions_same_tag_twice_is_collision():
     # Two <p> elements: same tag → same FuzzyHashableTree hash → collision
-    assert_equal(_has_fuzzy_hash_collisions(children_of('<p>a</p><p>b</p>')), True)
+    assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('<p>a</p><p>b</p>')), True)
 
 
 def test_has_fuzzy_hash_collisions_text_nodes_ignored():
     # Text nodes are skipped; only two distinct element tags → no collision
-    assert_equal(_has_fuzzy_hash_collisions(children_of('hello <p>a</p><h1>b</h1>')), False)
+    assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('hello <p>a</p><h1>b</h1>')), False)
 
 
 # --- build_pairwise_match_matrix ---
@@ -134,27 +138,57 @@ def test_group_non_consecutive_pairs_become_separate_blocks():
 
 
 def test_fuzzy_match_blocks_empty_old():
-    assert_equal(fuzzy_match_blocks([], children_of('<p>hello</p>')), [(0, 1, 0)])
+    assert_equal(fuzzy_match_blocks([], get_dom_nodes('<p>hello</p>')), [(0, 1, 0)])
 
 
 def test_fuzzy_match_blocks_empty_new():
-    assert_equal(fuzzy_match_blocks(children_of('<p>hello</p>'), []), [(1, 0, 0)])
+    assert_equal(fuzzy_match_blocks(get_dom_nodes('<p>hello</p>'), []), [(1, 0, 0)])
 
 
 def test_fuzzy_match_blocks_similar_text_same_tag_matches():
-    old = children_of('<p>Hello world</p>')
-    new = children_of('<p>Hello earth</p>')
+    old = get_dom_nodes('<p>Hello world</p>')
+    new = get_dom_nodes('<p>Hello earth</p>')
     assert_equal(fuzzy_match_blocks(old, new), [(0, 0, 1), (1, 1, 0)])
 
 
 def test_fuzzy_match_blocks_different_tag_does_not_match():
-    old = children_of('<p>Hello world</p>')
-    new = children_of('<h1>Hello world</h1>')
+    old = get_dom_nodes('<p>Hello world</p>')
+    new = get_dom_nodes('<h1>Hello world</h1>')
     assert_equal(fuzzy_match_blocks(old, new), [(1, 1, 0)])
 
 
 def test_fuzzy_match_blocks_unmatched_node_excluded_from_blocks():
     # old[0] and old[1] fuzzy-match new[0] and new[1]; old[2] has no match
-    old = children_of('<p>Hello world</p><p>Foo bar</p><h2>Other</h2>')
-    new = children_of('<p>Hello earth</p><p>Foo bar</p>')
+    old = get_dom_nodes('<p>Hello world</p><p>Foo bar</p><h2>Other</h2>')
+    new = get_dom_nodes('<p>Hello earth</p><p>Foo bar</p>')
     assert_equal(fuzzy_match_blocks(old, new), [(0, 0, 2), (3, 2, 0)])
+
+
+# --- table-context restriction for fuzzy_match_blocks ---
+
+
+def _make_differ():
+    empty = parse_minidom('<html></html>')
+    return Differ(empty, empty)
+
+
+def test_fuzzy_match_not_called_outside_table_context():
+    old = get_dom_nodes('<p>Alpha paragraph.</p><p>Beta paragraph.</p>')
+    new = get_dom_nodes('<p>Alpha changed.</p><p>Beta changed.</p>')
+    with patch(
+        'htmltreediff.diff_core.fuzzy_match_blocks',
+        wraps=fuzzy_match_blocks,
+    ) as spy:
+        _make_differ().match_children(old, new, in_table_context=False)
+    spy.assert_not_called()
+
+
+def test_fuzzy_match_called_inside_table_context():
+    old = get_dom_nodes('<tr><td>Row one old</td></tr><tr><td>Row two old</td></tr>')
+    new = get_dom_nodes('<tr><td>Row one new</td></tr><tr><td>Row two new</td></tr>')
+    with patch(
+        'htmltreediff.diff_core.fuzzy_match_blocks',
+        wraps=fuzzy_match_blocks,
+    ) as spy:
+        _make_differ().match_children(old, new, in_table_context=True)
+    spy.assert_called()
