@@ -27,18 +27,15 @@ def test_has_fuzzy_hash_collisions_no_children():
     assert_equal(_has_fuzzy_hash_collisions([]), False)
 
 
-def test_has_fuzzy_hash_collisions_all_distinct_tags():
-    # <p> and <h1> have different tags so different hashes — no collision
+def test_all_distinct_tags_dont_have_collisions():
     assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('<p>a</p><h1>b</h1>')), False)
 
 
-def test_has_fuzzy_hash_collisions_same_tag_twice_is_collision():
-    # Two <p> elements: same tag → same FuzzyHashableTree hash → collision
+def test_same_tag_twice_has_collision():
     assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('<p>a</p><p>b</p>')), True)
 
 
-def test_has_fuzzy_hash_collisions_text_nodes_ignored():
-    # Text nodes are skipped; only two distinct element tags → no collision
+def test_text_nodes_ignored_in_collision_check():
     assert_equal(_has_fuzzy_hash_collisions(get_dom_nodes('hello <p>a</p><h1>b</h1>')), False)
 
 
@@ -81,7 +78,7 @@ def test_lcs_lengths_diagonal_matches_accumulate():
 # --- traceback_longest_common_subsequence_matched_pairs ---
 
 
-def test_traceback_no_matches():
+def test_traceback_no_matches_returns_no_pairs():
     match_matrix = [[False, False], [False, False]]
     lcs_lengths = compute_longest_common_subsequence_lengths_table(match_matrix)
     assert_equal(
@@ -90,7 +87,7 @@ def test_traceback_no_matches():
     )
 
 
-def test_traceback_two_diagonal_matches():
+def test_traceback_two_diagonal_matches_returns_correct_pairs():
     match_matrix = [[True, False], [False, True]]
     lcs_lengths = compute_longest_common_subsequence_lengths_table(match_matrix)
     assert_equal(
