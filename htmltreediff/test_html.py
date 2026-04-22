@@ -610,15 +610,13 @@ def test_diff_focused_on_changed_cells_when_colgroup_added():
         '<tr><td>Beta</td><td>new value</td></tr>'
         '</tbody></table>'
     )
-    result = diff(old_html, new_html)
-    # Table should not be entirely replaced.
-    assert '<del><table' not in result, result
-    # Unchanged content should appear without markup.
-    assert '<td>Alpha</td>' in result, result
-    assert '<td>unchanged</td>' in result, result
-    # Only the changed cell should have del/ins.
-    assert '<del>old</del>' in result, result
-    assert '<ins>new</ins>' in result, result
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td><del>old</del><ins>new</ins> value</td></tr>'
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
 
 
 def test_similar_rows_not_misaligned_with_colgroup():
