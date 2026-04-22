@@ -19,6 +19,13 @@ from htmltreediff.util import (
 )
 
 
+# Maximum n*m product for the pairwise LCS path in fuzzy_match_blocks.
+# Beyond this threshold, fall back to SequenceMatcher to avoid excessive
+# memory from the n*m boolean + DP tables.
+# 10000 comfortably covers tables up to ~100 x 100 unmatched rows in a single gap.
+FUZZY_MATCH_SIZE_LIMIT = 10000
+
+
 def match_node_hash(node):
     if is_text(node):
         return node.nodeValue
@@ -125,7 +132,7 @@ class Differ():
             alo, ahi, blo, bhi = nonmatch
             gap_old = old_children[alo:ahi]
             gap_new = new_children[blo:bhi]
-            if in_table_context and _has_fuzzy_hash_collisions(gap_new):
+            if should_use_fuzzy_match(gap_old, gap_new, in_table_context):
                 blocks = fuzzy_match_blocks(gap_old, gap_new)
             else:
                 sm_fuzzy = match_blocks(
@@ -287,6 +294,17 @@ def match_blocks(hash_func, old_children, new_children):
         b=[hash_func(c) for c in new_children],
     )
     return sm
+
+
+def should_use_fuzzy_match(old_gap, new_gap, in_table_context):
+    if not in_table_context:
+        return False
+    gap_size = len(old_gap) * len(new_gap)
+    if gap_size > FUZZY_MATCH_SIZE_LIMIT:
+        return False
+    if not _has_fuzzy_hash_collisions(new_gap):
+        return False
+    return True
 
 
 def _has_fuzzy_hash_collisions(children):

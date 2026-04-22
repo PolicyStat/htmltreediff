@@ -172,10 +172,7 @@ def _make_differ():
 def test_fuzzy_match_not_called_outside_table_context():
     old = get_dom_nodes('<p>Alpha paragraph.</p><p>Beta paragraph.</p>')
     new = get_dom_nodes('<p>Alpha changed.</p><p>Beta changed.</p>')
-    with patch(
-        'htmltreediff.diff_core.fuzzy_match_blocks',
-        wraps=fuzzy_match_blocks,
-    ) as spy:
+    with patch('htmltreediff.diff_core.fuzzy_match_blocks', wraps=fuzzy_match_blocks) as spy:
         _make_differ().match_children(old, new, in_table_context=False)
     spy.assert_not_called()
 
@@ -183,9 +180,42 @@ def test_fuzzy_match_not_called_outside_table_context():
 def test_fuzzy_match_called_inside_table_context():
     old = get_dom_nodes('<tr><td>Row one old</td></tr><tr><td>Row two old</td></tr>')
     new = get_dom_nodes('<tr><td>Row one new</td></tr><tr><td>Row two new</td></tr>')
-    with patch(
-        'htmltreediff.diff_core.fuzzy_match_blocks',
-        wraps=fuzzy_match_blocks,
-    ) as spy:
+    with patch('htmltreediff.diff_core.fuzzy_match_blocks', wraps=fuzzy_match_blocks) as spy:
         _make_differ().match_children(old, new, in_table_context=True)
+    spy.assert_called()
+
+
+def test_fuzzy_match_not_called_when_gap_exceeds_size_limit():
+    # 3 old x 3 new = gap size 9; set limit to 4 so it falls back.
+    old = get_dom_nodes(
+        '<tr><td>A</td></tr>'
+        '<tr><td>B</td></tr>'
+        '<tr><td>C</td></tr>'
+    )
+    new = get_dom_nodes(
+        '<tr><td>X</td></tr>'
+        '<tr><td>Y</td></tr>'
+        '<tr><td>Z</td></tr>'
+    )
+    with patch('htmltreediff.diff_core.fuzzy_match_blocks', wraps=fuzzy_match_blocks) as spy:
+        with patch('htmltreediff.diff_core.FUZZY_MATCH_SIZE_LIMIT', 4):
+            _make_differ().match_children(old, new, in_table_context=True)
+    spy.assert_not_called()
+
+
+def test_fuzzy_match_called_when_gap_within_size_limit():
+    # 3 old x 3 new = gap size 9; set limit to 9 so it proceeds.
+    old = get_dom_nodes(
+        '<tr><td>A</td></tr>'
+        '<tr><td>B</td></tr>'
+        '<tr><td>C</td></tr>'
+    )
+    new = get_dom_nodes(
+        '<tr><td>X</td></tr>'
+        '<tr><td>Y</td></tr>'
+        '<tr><td>Z</td></tr>'
+    )
+    with patch('htmltreediff.diff_core.fuzzy_match_blocks', wraps=fuzzy_match_blocks) as spy:
+        with patch('htmltreediff.diff_core.FUZZY_MATCH_SIZE_LIMIT', 9):
+            _make_differ().match_children(old, new, in_table_context=True)
     spy.assert_called()
