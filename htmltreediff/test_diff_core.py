@@ -5,12 +5,14 @@ from nose.tools import assert_equal
 
 from htmltreediff.diff_core import (
     _has_fuzzy_hash_collisions,
+    fuzzy_match_blocks,
+    Differ,
+)
+from htmltreediff.lcs import (
     build_pairwise_match_matrix,
     compute_longest_common_subsequence_lengths_table,
-    fuzzy_match_blocks,
     group_consecutive_pairs_into_blocks,
     traceback_longest_common_subsequence_matched_pairs,
-    Differ,
 )
 from htmltreediff.util import parse_minidom
 
