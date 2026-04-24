@@ -597,6 +597,94 @@ def test_fix_tables():
         yield test
 
 
+def test_diff_focused_on_changed_cells_when_colgroup_added():
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>old value</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>new value</td></tr>'
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td><del>old</del><ins>new</ins> value</td></tr>'
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
+
+
+def test_similar_rows_not_misaligned_with_colgroup():
+    """
+    When a colgroup is added and rows share boilerplate text, pairwise
+    fuzzy matching should align each old row to its positional counterpart
+    rather than misaligning due to non-transitive text similarity.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
+
+
+def test_similar_rows_not_misaligned_without_colgroup():
+    """
+    Same non-transitive fuzzy equality problem as above, but triggered
+    without a colgroup -- every row has a small change so no exact matches
+    exist and all rows go through fuzzy matching.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert_equal(diff(old_html, new_html), expected)
+
+
 def test_add_class_to_empty_del_tags():
     cases = [
         (

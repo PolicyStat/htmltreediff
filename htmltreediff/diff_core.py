@@ -3,11 +3,13 @@ from xml.dom import Node
 
 import six
 
+from htmltreediff.lcs import matching_blocks_from_hashes
 from htmltreediff.text import is_text_junk
 from htmltreediff.util import (
     copy_dom,
     HashableTree,
     FuzzyHashableTree,
+    dom_node_in_table_context,
     is_text,
     get_child,
     get_location,
@@ -16,6 +18,13 @@ from htmltreediff.util import (
     attribute_dict,
     walk_dom,
 )
+
+
+# Maximum n*m product for the pairwise LCS path in fuzzy_match_blocks.
+# Beyond this threshold, fall back to SequenceMatcher to avoid excessive
+# memory from the n*m boolean + DP tables.
+# 10000 comfortably covers tables up to ~100 x 100 unmatched rows in a single gap.
+FUZZY_MATCH_SIZE_LIMIT = 10000
 
 
 def match_node_hash(node):
@@ -66,9 +75,8 @@ class Differ():
         # the text-similar matches and the tag-only matches, we still have more
         # work to do, so we recurse on these. The non-matching parts that
         # remain are used to output edit script entries.
-        old_children = list(
-            get_location(self.old_dom, old_location).childNodes,
-        )
+        old_parent = get_location(self.old_dom, old_location)
+        old_children = list(old_parent.childNodes)
         new_children = list(
             get_location(self.new_dom, new_location).childNodes,
         )
@@ -78,6 +86,7 @@ class Differ():
         matching_blocks, recursion_indices = self.match_children(
             old_children,
             new_children,
+            in_table_context=dom_node_in_table_context(old_parent),
         )
 
         # Apply changes for this level.
@@ -106,7 +115,7 @@ class Differ():
                 new_location + [new_index],
             )
 
-    def match_children(self, old_children, new_children):
+    def match_children(self, old_children, new_children, in_table_context=False):
         # Find whole-tree matches and fuzzy matches.
         sm = match_blocks(match_node_hash, old_children, new_children)
         # If the match is very poor, pretend there were no exact matching
@@ -122,12 +131,17 @@ class Differ():
         fuzzy_matching_blocks = [(0, 0, 0)]
         for nonmatch in gaps:
             alo, ahi, blo, bhi = nonmatch
-            sm_fuzzy = match_blocks(
-                fuzzy_match_node_hash,
-                old_children[alo:ahi],
-                new_children[blo:bhi],
-            )
-            blocks = sm_fuzzy.get_matching_blocks()
+            gap_old = old_children[alo:ahi]
+            gap_new = new_children[blo:bhi]
+            if should_use_fuzzy_match(gap_old, gap_new, in_table_context):
+                blocks = fuzzy_match_blocks(gap_old, gap_new)
+            else:
+                sm_fuzzy = match_blocks(
+                    fuzzy_match_node_hash,
+                    gap_old,
+                    gap_new,
+                )
+                blocks = sm_fuzzy.get_matching_blocks()
             # Move blocks over to the position of the gap.
             blocks = [
                 (alo + a, blo + b, size)
@@ -281,6 +295,58 @@ def match_blocks(hash_func, old_children, new_children):
         b=[hash_func(c) for c in new_children],
     )
     return sm
+
+
+def should_use_fuzzy_match(old_gap, new_gap, in_table_context):
+    if not in_table_context:
+        return False
+    gap_size = len(old_gap) * len(new_gap)
+    if gap_size > FUZZY_MATCH_SIZE_LIMIT:
+        return False
+    if not _has_fuzzy_hash_collisions(new_gap):
+        return False
+    return True
+
+
+def _has_fuzzy_hash_collisions(children):
+    """Check if element children have hash collisions in fuzzy matching.
+
+    When multiple element nodes hash to the same FuzzyHashableTree value,
+    SequenceMatcher may group them incorrectly due to non-transitive equality,
+    causing misaligned matches. Text nodes use string equality (which is
+    transitive) and are not affected.
+    """
+    seen_hashes = set()
+    for c in children:
+        if is_text(c):
+            continue
+        h = hash(fuzzy_match_node_hash(c))
+        if h in seen_hashes:
+            return True
+        seen_hashes.add(h)
+    return False
+
+
+def fuzzy_match_blocks(old_children, new_children):
+    """Find matching blocks using direct pairwise fuzzy comparison.
+
+    Unlike match_blocks (which uses SequenceMatcher), this compares each
+    old-new pair individually using FuzzyHashableTree. This avoids
+    misalignment caused by FuzzyHashableTree's non-transitive equality:
+    SequenceMatcher groups elements into a dict by equality, so when A==B and
+    B==C but A!=C, elements get merged into incorrect groups and the longest
+    common subsequence is computed on wrong groupings.
+    """
+    n = len(old_children)
+    m = len(new_children)
+
+    if n == 0 or m == 0:
+        return [(n, m, 0)]
+
+    old_hashes = [fuzzy_match_node_hash(c) for c in old_children]
+    new_hashes = [fuzzy_match_node_hash(c) for c in new_children]
+
+    return matching_blocks_from_hashes(old_hashes, new_hashes)
 
 
 def get_nonmatching_blocks(matching_blocks):
