@@ -553,6 +553,106 @@ def test_fix_tables():
             '''
         ),
         (
+            'tbody inside ins is distributed',
+            '''
+            <table>
+              <ins><tbody><tr><td>A</td></tr></tbody></ins>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td><ins>A</ins></td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'tbody inside del is distributed',
+            '''
+            <table>
+              <del><tbody><tr><td>A</td></tr></tbody></del>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td><del>A</del></td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'thead inside ins is distributed',
+            '''
+            <table>
+              <ins><thead><tr><th>Header</th></tr></thead></ins>
+              <tbody><tr><td>Data</td></tr></tbody>
+            </table>
+            ''',
+            '''
+            <table>
+              <thead><tr><th><ins>Header</ins></th></tr></thead>
+              <tbody><tr><td>Data</td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'thead inside del is distributed',
+            '''
+            <table>
+              <del><thead><tr><th>Header</th></tr></thead></del>
+              <tbody><tr><td>Data</td></tr></tbody>
+            </table>
+            ''',
+            '''
+            <table>
+              <thead><tr><th><del>Header</del></th></tr></thead>
+              <tbody><tr><td>Data</td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'tfoot inside ins is distributed',
+            '''
+            <table>
+              <tbody><tr><td>Data</td></tr></tbody>
+              <ins><tfoot><tr><td>Footer</td></tr></tfoot></ins>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td>Data</td></tr></tbody>
+              <tfoot><tr><td><ins>Footer</ins></td></tr></tfoot>
+            </table>
+            '''
+        ),
+        (
+            'tfoot inside del is distributed',
+            '''
+            <table>
+              <tbody><tr><td>Data</td></tr></tbody>
+              <del><tfoot><tr><td>Footer</td></tr></tfoot></del>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td>Data</td></tr></tbody>
+              <tfoot><tr><td><del>Footer</del></td></tr></tfoot>
+            </table>
+            '''
+        ),
+        (
+            'tbody del and ins pair is distributed',
+            '''
+            <table>
+              <del><tbody><tr><td>old data</td></tr></tbody></del>
+              <ins><tbody><tr><td>new data</td></tr></tbody></ins>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td><del>old data</del><ins>new data</ins></td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
             'remove ins and del tags at the wrong level of the table',
             '''
             <table>
