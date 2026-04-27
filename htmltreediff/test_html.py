@@ -639,7 +639,7 @@ def test_fix_tables():
             '''
         ),
         (
-            'tbody del and ins pair is distributed',
+            'tbody del and ins pair is internalized',
             '''
             <table>
               <del><tbody><tr><td>old data</td></tr></tbody></del>
@@ -649,6 +649,56 @@ def test_fix_tables():
             '''
             <table>
               <tbody><tr><td><del>old data</del><ins>new data</ins></td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'thead del and ins pair is internalized',
+            '''
+            <table>
+              <del><thead><tr><th>old header</th></tr></thead></del>
+              <ins><thead><tr><th>new header</th></tr></thead></ins>
+              <tbody><tr><td>data</td></tr></tbody>
+            </table>
+            ''',
+            '''
+            <table>
+              <thead><tr><th><del>old header</del><ins>new header</ins></th></tr></thead>
+              <tbody><tr><td>data</td></tr></tbody>
+            </table>
+            '''
+        ),
+        (
+            'tfoot del and ins pair is internalized',
+            '''
+            <table>
+              <tbody><tr><td>data</td></tr></tbody>
+              <del><tfoot><tr><td>old footer</td></tr></tfoot></del>
+              <ins><tfoot><tr><td>new footer</td></tr></tfoot></ins>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody><tr><td>data</td></tr></tbody>
+              <tfoot><tr><td><del>old footer</del><ins>new footer</ins></td></tr></tfoot>
+            </table>
+            '''
+        ),
+        (
+            'tr del and ins pair is internalized',
+            '''
+            <table>
+              <tbody>
+                <del><tr><td>old row</td></tr></del>
+                <ins><tr><td>new row</td></tr></ins>
+              </tbody>
+            </table>
+            ''',
+            '''
+            <table>
+              <tbody>
+                <tr><td><del>old row</del><ins>new row</ins></td></tr>
+              </tbody>
             </table>
             '''
         ),
