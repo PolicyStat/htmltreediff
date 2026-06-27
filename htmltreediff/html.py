@@ -1,4 +1,5 @@
 from htmltreediff.util import (
+    BLOCK_TAGS,
     check_text_similarity,
     is_element,
     minidom_tostring,
@@ -14,19 +15,24 @@ from htmltreediff.changes import dom_diff, distribute
 import re
 
 
-def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False):
+def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False,
+         textonly=False):
     """Show the differences between the old and new html document, as html.
 
     Return the document html with extra tags added to show changes. Add <ins>
     tags around newly added sections, and <del> tags to show sections that have
     been deleted.
+
+    If textonly is True, ignore changes to block-level element tags (e.g. a
+    <p> changed to <h2> with the same text will not show as changed), while
+    still showing changes to text content and inline formatting.
     """
     if plaintext:
         old_dom = parse_text(old_html)
         new_dom = parse_text(new_html)
     else:
-        old_dom = parse_minidom(old_html)
-        new_dom = parse_minidom(new_html)
+        old_dom = parse_minidom(old_html, keep_spans=textonly)
+        new_dom = parse_minidom(new_html, keep_spans=textonly)
 
     # If the two documents are not similar enough, don't show the changes.
     if not check_text_similarity(old_dom, new_dom, cutoff):
@@ -35,7 +41,7 @@ def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False):
             'show concisely.</h2>'
         )
 
-    dom = dom_diff(old_dom, new_dom)
+    dom = dom_diff(old_dom, new_dom, textonly=textonly)
 
     # HTML-specific cleanup.
     if not plaintext:
@@ -43,12 +49,56 @@ def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False):
         fix_tables(dom)
         add_class_to_empty_del_tags(dom)
 
+    # In textonly mode, remove del/ins pairs that only differ in block tag name
+    if textonly and not plaintext:
+        _remove_block_tag_only_changes(dom)
+
     # Only return html for the document body contents.
     body_elements = dom.getElementsByTagName('body')
     if len(body_elements) == 1:
         dom = body_elements[0]
 
     return minidom_tostring(dom, pretty=pretty)
+
+
+def _remove_block_tag_only_changes(dom):
+    """Remove del/ins pairs where the only difference is a block-level tag name.
+
+    In textonly mode, if a block element was deleted and another block element
+    was inserted with the same content, unwrap both the del and ins tags,
+    keeping just the new content.
+    """
+    for del_tag in list(dom.getElementsByTagName('del')):
+        ins_tag = del_tag.nextSibling
+        if ins_tag is None or ins_tag.nodeName != 'ins':
+            continue
+        # Check if both contain exactly one block-level element child
+        if len(del_tag.childNodes) != 1 or len(ins_tag.childNodes) != 1:
+            continue
+        deleted_child = del_tag.firstChild
+        inserted_child = ins_tag.firstChild
+        if not is_element(deleted_child) or not is_element(inserted_child):
+            continue
+        del_is_block = deleted_child.tagName.lower() in BLOCK_TAGS
+        ins_is_block = inserted_child.tagName.lower() in BLOCK_TAGS
+        if not del_is_block or not ins_is_block:
+            continue
+        # Both are block elements - check if their content is identical
+        del_inner = _get_inner_xml(deleted_child)
+        ins_inner = _get_inner_xml(inserted_child)
+        if del_inner == ins_inner:
+            # Same content, just tag name change - keep the new version
+            parent = del_tag.parentNode
+            parent.removeChild(del_tag)
+            unwrap(ins_tag)
+
+
+def _get_inner_xml(node):
+    """Get the serialized inner content of a node."""
+    parts = []
+    for child in node.childNodes:
+        parts.append(child.toxml())
+    return ''.join(parts)
 
 
 def _internalize_changes_markup(dom, child_tag_names):
