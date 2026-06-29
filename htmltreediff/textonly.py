@@ -26,9 +26,15 @@ def _is_block(node):
 
 
 def _extract_text_from_node(node):
-    """Extract text content from a single node (recursively, inline only)."""
+    """Extract text content from a single node (recursively, inline only).
+
+    Treats <br> elements as a space separator to prevent word concatenation
+    across line breaks (e.g. "submit<br/>WHAT" should not become "submitWHAT").
+    """
     if is_text(node):
         return node.nodeValue
+    if is_element(node) and node.nodeName.lower() == 'br':
+        return ' '
     parts = []
     for child in node.childNodes:
         parts.append(_extract_text_from_node(child))
