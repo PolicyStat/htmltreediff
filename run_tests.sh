@@ -1,3 +1,3 @@
 #! /bin/sh
 
-nosetests --verbose --with-doctest --with-coverage --cover-erase --cover-min-percentage=100 --cover-package htmltreediff $@  && find htmltreediff/ -name '*.py' | xargs flake8
+pytest --doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=100 "$@" && flake8 htmltreediff

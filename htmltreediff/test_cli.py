@@ -1,9 +1,7 @@
 import sys
 import tempfile
-from six import StringIO
+from io import StringIO
 from textwrap import dedent
-
-from nose.tools import assert_equal
 
 from htmltreediff.cli import main
 
@@ -21,14 +19,12 @@ def test_main():
     try:
         sys.stdout = stream = StringIO()
         main(argv=('', f1.name, f2.name))
-        assert_equal(
-            stream.getvalue(),
-            dedent('''
-                <h1>one</h1>
-                <ins>
-                  <h2>two</h2>
-                </ins>
-            ''').strip() + '\n',
-        )
+        expected = dedent('''
+            <h1>one</h1>
+            <ins>
+              <h2>two</h2>
+            </ins>
+        ''').strip() + '\n'
+        assert stream.getvalue() == expected
     finally:
         sys.stdout = old_stdout

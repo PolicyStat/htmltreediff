@@ -1,9 +1,6 @@
-# coding: utf8
-
 from pprint import pformat
 from xml.dom import Node
 
-from nose.tools import assert_equal
 
 from htmltreediff.html import diff
 from htmltreediff.util import (
@@ -1248,7 +1245,7 @@ def test_parse_text():
     text = 'test one two < & > ;'
     dom = parse_text(text)
     root = dom.documentElement
-    assert_equal(len(root.childNodes), 1)
+    assert len(root.childNodes) == 1
     child = root.childNodes[0]
     assert is_text(child)
     assert child.nodeValue == text
@@ -1319,11 +1316,9 @@ def test_edit_script():
 
         def test():
             actual_edit_script = get_edit_script(case.old_html, case.new_html)
-            assert_equal(
-                case.edit_script,
-                actual_edit_script,
-                ('These edit scripts do not match:\n%s\n!=\n%s'
-                 % (pformat(case.edit_script), pformat(actual_edit_script))),
+            assert case.edit_script == actual_edit_script, (
+                'These edit scripts do not match:\n%s\n!=\n%s'
+                % (pformat(case.edit_script), pformat(actual_edit_script))
             )
         test.description = 'test_edit_script - %s' % case.name
         yield test

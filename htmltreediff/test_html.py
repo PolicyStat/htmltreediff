@@ -1,6 +1,5 @@
 from textwrap import dedent
 
-from nose.tools import assert_equal
 
 from htmltreediff.html import diff
 from htmltreediff.tests import assert_html_equal
@@ -83,8 +82,8 @@ def test_preprocessing():
     for description, old_html, target, target_raw, in preprocessing_cases:
         def test():
             dom = parse_minidom(old_html)
-            assert_equal(minidom_tostring(dom), target)
-            assert_equal(remove_xml_declaration(dom.toxml()), target_raw)
+            assert minidom_tostring(dom) == target
+            assert remove_xml_declaration(dom.toxml()) == target_raw
         test.description = description
         yield test
 
@@ -111,13 +110,13 @@ def test_remove_insignificant_text_nodes():
     dom = parse_minidom(html)
     remove_insignificant_text_nodes(dom)
     html = minidom_tostring(dom)
-    assert_equal(html, target_html)
+    assert html == target_html
 
     # Check that it is idempotent.
     dom = parse_minidom(html)
     remove_insignificant_text_nodes(dom)
     html = minidom_tostring(dom)
-    assert_equal(html, target_html)
+    assert html == target_html
 
 
 def test_remove_insignificant_text_nodes_nbsp():
@@ -136,10 +135,9 @@ def test_remove_insignificant_text_nodes_nbsp():
     dom = parse_minidom(html)
     remove_insignificant_text_nodes(dom)
     html = minidom_tostring(dom)
-    assert_equal(
-        html,
-        ('<table><tbody><tr><td> </td><td> </td><td> </td>'
-         ' AAA </tr></tbody></table>'),
+    assert html == (
+        '<table><tbody><tr><td> </td><td> </td><td> </td>'
+        ' AAA </tr></tbody></table>'
     )
 
 
@@ -150,10 +148,7 @@ def test_other_node_type_inserted():
         u'<p>foo</p>',
         u'<p>foo bar</p><?xml version=\'1.0\' encoding=\'utf-8\'?>',
     )
-    assert_equal(
-        changes,
-        '<p>foo<ins> bar</ins></p>',
-    )
+    assert changes == '<p>foo<ins> bar</ins></p>'
 
 
 def test_non_printing_characters():
@@ -161,10 +156,7 @@ def test_non_printing_characters():
         '',
         '<div><p\x01>\x1Ffoo\x21</p>\x00<p>bar</p></div>',
     )
-    assert_equal(
-        changes,
-        '<ins><div><p> foo!</p> <p>bar</p></div></ins>'
-    )
+    assert changes == '<ins><div><p> foo!</p> <p>bar</p></div></ins>'
 
 
 def test_cutoff():
@@ -173,11 +165,9 @@ def test_cutoff():
         '<h2>different</h2>',
         cutoff=0.2,
     )
-    assert_equal(
-        changes,
+    assert changes == (
         '<h2>The differences from the previous version are too large to show '
-        'concisely.</h2>',
-    )
+        'concisely.</h2>')
 
 
 def test_html_diff_pretty():
@@ -197,7 +187,7 @@ def test_html_diff_pretty():
     for test_name, old_html, new_html, pretty_changes in cases:
         def test():
             changes = diff(old_html, new_html, cutoff=0.0, pretty=True)
-            assert_equal(pretty_changes, changes)
+            assert pretty_changes == changes
         test.description = 'test_html_diff_pretty - %s' % test_name
         yield test
 
@@ -766,7 +756,7 @@ def test_diff_focused_on_changed_cells_when_colgroup_added():
         '<tr><td>Beta</td><td><del>old</del><ins>new</ins> value</td></tr>'
         '</tbody></table>'
     )
-    assert_equal(diff(old_html, new_html), expected)
+    assert diff(old_html, new_html) == expected
 
 
 def test_similar_rows_not_misaligned_with_colgroup():
@@ -799,7 +789,7 @@ def test_similar_rows_not_misaligned_with_colgroup():
         '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
         '</tbody></table>'
     )
-    assert_equal(diff(old_html, new_html), expected)
+    assert diff(old_html, new_html) == expected
 
 
 def test_similar_rows_not_misaligned_without_colgroup():
@@ -832,7 +822,7 @@ def test_similar_rows_not_misaligned_without_colgroup():
         '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
         '</tbody></table>'
     )
-    assert_equal(diff(old_html, new_html), expected)
+    assert diff(old_html, new_html) == expected
 
 
 def test_add_class_to_empty_del_tags():

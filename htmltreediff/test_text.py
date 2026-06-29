@@ -1,6 +1,3 @@
-# coding: utf8
-from nose.tools import assert_equal
-
 from htmltreediff.html import diff
 from htmltreediff.text import split_text
 
@@ -38,7 +35,7 @@ def test_text_split():
     ]
     for text, target in cases:
         def test():
-            assert_equal(split_text(text), target)
+            assert split_text(text) == target
         yield test
 
 
@@ -102,6 +99,6 @@ def test_text_diff():
     ]
     for description, old, new, changes in cases:
         def test():
-            assert_equal(diff(old, new, plaintext=True), changes)
+            assert diff(old, new, plaintext=True) == changes
         test.description = 'test_text_diff - %s' % description
         yield test
