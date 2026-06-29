@@ -30,6 +30,7 @@ def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False,
     """
     # Use the text-block diff algorithm for textonly HTML diffs
     if textonly and not plaintext:
+        raise Exception('I broke this')
         return textonly_diff(old_html, new_html, cutoff=cutoff, pretty=pretty)
 
     if plaintext:
