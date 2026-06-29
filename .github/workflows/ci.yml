@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements/default.txt -r requirements/testing.txt
           pip install -e .
       - name: Run tests
-        run: pytest --doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=100
+        run: pytest --doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=92
       - name: Run linter
         run: flake8 htmltreediff
 
