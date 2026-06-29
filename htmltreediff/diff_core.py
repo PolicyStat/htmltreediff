@@ -9,8 +9,6 @@ from htmltreediff.util import (
     copy_dom,
     HashableTree,
     FuzzyHashableTree,
-    TextOnlyHashableTree,
-    TextOnlyFuzzyHashableTree,
     dom_node_in_table_context,
     is_text,
     get_child,
@@ -29,28 +27,23 @@ from htmltreediff.util import (
 FUZZY_MATCH_SIZE_LIMIT = 10000
 
 
-def match_node_hash(node, textonly=False):
+def match_node_hash(node):
     if is_text(node):
         return node.nodeValue
-    if textonly:
-        return TextOnlyHashableTree(node)
     return HashableTree(node)
 
 
-def fuzzy_match_node_hash(node, textonly=False):
+def fuzzy_match_node_hash(node):
     if is_text(node):
         return node.nodeValue
-    if textonly:
-        return TextOnlyFuzzyHashableTree(node)
     return FuzzyHashableTree(node)
 
 
 class Differ():
-    def __init__(self, old_dom, new_dom, textonly=False):
+    def __init__(self, old_dom, new_dom):
         self.edit_script = []
         self.old_dom = copy_dom(old_dom)
         self.new_dom = copy_dom(new_dom)
-        self.textonly = textonly
 
     def get_edit_script(self):
         """
@@ -124,12 +117,7 @@ class Differ():
 
     def match_children(self, old_children, new_children, in_table_context=False):
         # Find whole-tree matches and fuzzy matches.
-        textonly = self.textonly
-
-        def hash_func(node):
-            return match_node_hash(node, textonly=textonly)
-
-        sm = match_blocks(hash_func, old_children, new_children)
+        sm = match_blocks(match_node_hash, old_children, new_children)
         # If the match is very poor, pretend there were no exact matching
         # blocks at all.
         if sm.ratio() < 0.3:
@@ -140,19 +128,16 @@ class Differ():
         # In each gap between exact matches, find fuzzy matches.
         gaps = get_nonmatching_blocks(matching_blocks)
 
-        def fuzzy_hash_func(node):
-            return fuzzy_match_node_hash(node, textonly=textonly)
-
         fuzzy_matching_blocks = [(0, 0, 0)]
         for nonmatch in gaps:
             alo, ahi, blo, bhi = nonmatch
             gap_old = old_children[alo:ahi]
             gap_new = new_children[blo:bhi]
             if should_use_fuzzy_match(gap_old, gap_new, in_table_context):
-                blocks = fuzzy_match_blocks(gap_old, gap_new, textonly=textonly)
+                blocks = fuzzy_match_blocks(gap_old, gap_new)
             else:
                 sm_fuzzy = match_blocks(
-                    fuzzy_hash_func,
+                    fuzzy_match_node_hash,
                     gap_old,
                     gap_new,
                 )
@@ -342,7 +327,7 @@ def _has_fuzzy_hash_collisions(children):
     return False
 
 
-def fuzzy_match_blocks(old_children, new_children, textonly=False):
+def fuzzy_match_blocks(old_children, new_children):
     """Find matching blocks using direct pairwise fuzzy comparison.
 
     Unlike match_blocks (which uses SequenceMatcher), this compares each
@@ -358,10 +343,8 @@ def fuzzy_match_blocks(old_children, new_children, textonly=False):
     if n == 0 or m == 0:
         return [(n, m, 0)]
 
-    old_hashes = [fuzzy_match_node_hash(c, textonly=textonly)
-                  for c in old_children]
-    new_hashes = [fuzzy_match_node_hash(c, textonly=textonly)
-                  for c in new_children]
+    old_hashes = [fuzzy_match_node_hash(c) for c in old_children]
+    new_hashes = [fuzzy_match_node_hash(c) for c in new_children]
 
     return matching_blocks_from_hashes(old_hashes, new_hashes)
 

@@ -34,13 +34,13 @@ def split_node(node):
     remove_node(node)
 
 
-def dom_diff(old_dom, new_dom, textonly=False):
+def dom_diff(old_dom, new_dom):
     # Split all the text nodes in the old and new dom.
     split_text_nodes(old_dom)
     split_text_nodes(new_dom)
 
     # Get the edit script from the diff algorithm
-    differ = Differ(old_dom, new_dom, textonly=textonly)
+    differ = Differ(old_dom, new_dom)
     edit_script = differ.get_edit_script()
     # Run the edit script, then use the inserted and deleted nodes metadata to
     #     show changes.

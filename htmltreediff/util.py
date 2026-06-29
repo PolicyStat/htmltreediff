@@ -38,7 +38,7 @@ def parse_text(text):
     return dom
 
 
-def parse_minidom(xml, clean=True, strict_xml=False, keep_spans=False):
+def parse_minidom(xml, clean=True, strict_xml=False):
     # Preprocessing
     xml = remove_comments(xml)
     if clean and not strict_xml:
@@ -58,11 +58,9 @@ def parse_minidom(xml, clean=True, strict_xml=False, keep_spans=False):
             if node.nodeName == 'style':
                 remove_node(node)
             elif node.nodeName == 'font':
-                if not keep_spans:
-                    unwrap(node)
+                unwrap(node)
             elif node.nodeName == 'span':
-                if not keep_spans:
-                    unwrap(node)
+                unwrap(node)
     dom.normalize()
 
     # Make sure that the body element is the top of the dom.
@@ -230,95 +228,6 @@ class FuzzyHashableTree(object):
         # This will never be equal if the top level tag in the tree is
         # different. Beyond that, we can't make any guarantees.
         return hash(HashableNode(self.node))
-
-
-def _is_block_element(node):
-    """Check whether a DOM node is a block-level element."""
-    return is_element(node) and node.nodeName.lower() in BLOCK_TAGS
-
-
-class TextOnlyHashableNode(object):
-    """HashableNode that treats all block-level tags as equivalent."""
-
-    def __init__(self, node):
-        self.node = node
-
-    def _effective_name(self):
-        if is_element(self.node) and self.node.nodeName.lower() in BLOCK_TAGS:
-            return '__block__'
-        return self.node.nodeName
-
-    def __eq__(self, other):
-        if self.node.nodeType != other.node.nodeType:
-            return False
-        if self._effective_name() != other._effective_name():
-            return False
-        if self.node.nodeValue != other.node.nodeValue:
-            return False
-        # Ignore attributes for block elements in textonly mode
-        if is_element(self.node) and self.node.nodeName.lower() in BLOCK_TAGS:
-            return True
-        if attribute_dict(self.node) != attribute_dict(other.node):
-            return False
-        return True
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        name = self._effective_name()
-        if is_element(self.node) and self.node.nodeName.lower() in BLOCK_TAGS:
-            return hash((self.node.nodeType, name, self.node.nodeValue))
-        attributes = frozenset(attribute_dict(self.node).items())
-        return hash((self.node.nodeType, name, self.node.nodeValue, attributes))
-
-
-class TextOnlyHashableTree(object):
-    """HashableTree that treats all block-level tags as equivalent."""
-
-    def __init__(self, node):
-        self.node = node
-
-    def __eq__(self, other):
-        if not hasattr(other, 'node'):
-            return False
-        if TextOnlyHashableNode(self.node) != TextOnlyHashableNode(other.node):
-            return False
-        self_child_nodes = [
-            TextOnlyHashableTree(c) for c in self.node.childNodes
-        ]
-        other_child_nodes = [
-            TextOnlyHashableTree(c) for c in other.node.childNodes
-        ]
-        if self_child_nodes != other_child_nodes:
-            return False
-        return True
-
-    def __hash__(self):
-        child_hashes = hash(tuple(
-            TextOnlyHashableTree(c) for c in self.node.childNodes
-        ))
-        return hash((TextOnlyHashableNode(self.node), child_hashes))
-
-
-class TextOnlyFuzzyHashableTree(object):
-    """FuzzyHashableTree that treats all block-level tags as equivalent."""
-    cutoff = 0.4
-
-    def __init__(self, node):
-        self.node = node
-
-    def __eq__(self, other):
-        if not hasattr(other, 'node'):
-            return False
-        if TextOnlyHashableNode(self.node) != TextOnlyHashableNode(other.node):
-            return False
-        if check_text_similarity(self.node, other.node, cutoff=self.cutoff):
-            return True
-        return False
-
-    def __hash__(self):
-        return hash(TextOnlyHashableNode(self.node))
 
 
 def attribute_dict(node):
