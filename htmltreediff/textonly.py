@@ -81,6 +81,10 @@ def extract_text_blocks(dom):
 def _blocks_to_words(blocks):
     """Convert blocks to a flat word list with block boundary markers.
 
+    Inserts a space token between blocks to prevent words at block
+    boundaries from being concatenated (e.g. "submit" + "WHAT" should
+    not match as "submitWHAT").
+
     Returns:
         words: list of word strings
         block_map: list of (block_index, word_offset_within_block) for each word
@@ -88,6 +92,10 @@ def _blocks_to_words(blocks):
     words = []
     block_map = []
     for block_idx, (text, _node) in enumerate(blocks):
+        # Add a space separator between blocks
+        if block_idx > 0 and words and not words[-1].isspace():
+            words.append(' ')
+            block_map.append((block_idx, -1))
         block_words = split_text(text)
         for word_offset, word in enumerate(block_words):
             words.append(word)
@@ -113,23 +121,47 @@ def _word_diff_to_block_diffs(opcodes, old_words, new_words,
     # Track deleted content that should render as standalone del blocks
     deleted_before = {}  # block_idx -> list of deleted text strings
 
+    def _is_boundary_space(j):
+        """Check if word at index j is a block-boundary spacer."""
+        return new_block_map[j][1] == -1
+
     for tag, i1, i2, j1, j2 in opcodes:
         if tag == 'equal':
-            # These words exist unchanged in the new doc
             for j in range(j1, j2):
+                if _is_boundary_space(j):
+                    continue
                 block_idx = new_block_map[j][0]
                 if block_idx not in block_pieces:
                     block_pieces[block_idx] = []
                 block_pieces[block_idx].append(new_words[j])
         elif tag == 'replace':
-            # Old words replaced with new words
             if j1 < j2:
-                block_idx = new_block_map[j1][0]
+                # Find the first non-boundary new word
+                first_j = j1
+                while first_j < j2 and _is_boundary_space(first_j):
+                    first_j += 1
+                if first_j >= j2:
+                    # All new words are boundary spaces - treat as delete
+                    del_text = ''.join(old_words[i1:i2])
+                    if first_j < len(new_block_map):
+                        block_idx = new_block_map[first_j][0]
+                    elif new_block_map:
+                        block_idx = new_block_map[-1][0]
+                    else:
+                        continue
+                    if block_idx not in deleted_before:
+                        deleted_before[block_idx] = []
+                    deleted_before[block_idx].append(del_text)
+                    continue
+
+                block_idx = new_block_map[first_j][0]
                 if block_idx not in block_pieces:
                     block_pieces[block_idx] = []
                 del_text = ''.join(old_words[i1:i2])
                 block_pieces[block_idx].append('<del>%s</del>' % del_text)
                 for j in range(j1, j2):
+                    if _is_boundary_space(j):
+                        continue
                     b_idx = new_block_map[j][0]
                     if b_idx != block_idx:
                         if b_idx not in block_pieces:
@@ -157,9 +189,13 @@ def _word_diff_to_block_diffs(opcodes, old_words, new_words,
                 continue
 
             # Check if there's preceding equal/matched content in same block
+            # (skip boundary spacers when checking)
+            prev_j = j1 - 1
+            while prev_j >= 0 and _is_boundary_space(prev_j):
+                prev_j -= 1
             has_preceding = (
-                j1 > 0 and j1 - 1 < len(new_block_map) and
-                new_block_map[j1 - 1][0] == block_idx
+                prev_j >= 0 and
+                new_block_map[prev_j][0] == block_idx
             )
 
             del_text = ''.join(old_words[i1:i2])
@@ -175,8 +211,9 @@ def _word_diff_to_block_diffs(opcodes, old_words, new_words,
                     deleted_before[block_idx] = []
                 deleted_before[block_idx].append(del_text)
         elif tag == 'insert':
-            # Words in new but not in old
             for j in range(j1, j2):
+                if _is_boundary_space(j):
+                    continue
                 block_idx = new_block_map[j][0]
                 if block_idx not in block_pieces:
                     block_pieces[block_idx] = []
