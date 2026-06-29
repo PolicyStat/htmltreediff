@@ -43,21 +43,18 @@ def test_text_nodes_ignored_in_collision_check():
 
 
 def test_build_pairwise_match_matrix_no_matches():
-    assert build_pairwise_match_matrix(['a', 'b'], ['c', 'd']) == [
-        [False, False],
-        [False, False],
-    ]
+    expected = [[False, False], [False, False]]
+    assert build_pairwise_match_matrix(['a', 'b'], ['c', 'd']) == expected
 
 
 def test_build_pairwise_match_matrix_some_matches():
-    assert build_pairwise_match_matrix(['a', 'b'], ['b', 'c']) == [
-        [False, False],
-        [True, False],
-    ]
+    expected = [[False, False], [True, False]]
+    assert build_pairwise_match_matrix(['a', 'b'], ['b', 'c']) == expected
 
 
 def test_build_pairwise_match_matrix_empty():
-    assert build_pairwise_match_matrix([], []) == []
+    expected = []
+    assert build_pairwise_match_matrix([], []) == expected
 
 
 # --- compute_longest_common_subsequence_lengths_table ---
@@ -81,8 +78,7 @@ def test_lcs_lengths_diagonal_matches_accumulate():
 def test_traceback_no_matches_returns_no_pairs():
     match_matrix = [[False, False], [False, False]]
     lcs_lengths = compute_longest_common_subsequence_lengths_table(match_matrix)
-    result = traceback_longest_common_subsequence_matched_pairs(
-        match_matrix, lcs_lengths)
+    result = traceback_longest_common_subsequence_matched_pairs(match_matrix, lcs_lengths)
     assert result == []
 
 
