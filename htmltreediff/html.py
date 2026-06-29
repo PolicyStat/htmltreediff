@@ -11,6 +11,7 @@ from htmltreediff.util import (
     wrap_nodes,
 )
 from htmltreediff.changes import dom_diff, distribute
+from htmltreediff.textonly import textonly_diff
 
 import re
 
@@ -27,6 +28,10 @@ def diff(old_html, new_html, cutoff=0.0, plaintext=False, pretty=False,
     <p> changed to <h2> with the same text will not show as changed), while
     still showing changes to text content and inline formatting.
     """
+    # Use the text-block diff algorithm for textonly HTML diffs
+    if textonly and not plaintext:
+        return textonly_diff(old_html, new_html, cutoff=cutoff, pretty=pretty)
+
     if plaintext:
         old_dom = parse_text(old_html)
         new_dom = parse_text(new_html)
