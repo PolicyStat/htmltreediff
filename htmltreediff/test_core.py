@@ -1,6 +1,7 @@
 from pprint import pformat
 from xml.dom import Node
 
+import pytest
 
 from htmltreediff.html import diff
 from htmltreediff.util import (
@@ -1205,19 +1206,13 @@ all_test_cases = (test_cases + reverse_test_cases + one_way_test_cases + insane_
 
 def assert_html_equal(a_html, b_html):
     assert html_equal(a_html, b_html), (
-        u'These html documents are not equal:\n%r\n====\n%r' % (
-            a_html,
-            b_html,
-        )
+        f'These html documents are not equal:\n{a_html!r}\n====\n{b_html!r}'
     )
 
 
 def assert_html_not_equal(a_html, b_html):
     assert not html_equal(a_html, b_html), (
-        u'These html documents should not be equal:\n%r\n====\n%r' % (
-            a_html,
-            b_html,
-        )
+        f'These html documents should not be equal:\n{a_html!r}\n====\n{b_html!r}'
     )
 
 
@@ -1308,55 +1303,42 @@ def test_remove_attributes():
         assert_html_equal(remove_attributes(html), stripped_html)
 
 
-def test_edit_script():
-    # edit script output does not reverse easily, don't test the reverse cases
-    for case in parse_cases(test_cases + one_way_test_cases):
-        if not case.edit_script:
-            continue
-
-        def test():
-            actual_edit_script = get_edit_script(case.old_html, case.new_html)
-            assert case.edit_script == actual_edit_script, (
-                'These edit scripts do not match:\n%s\n!=\n%s'
-                % (pformat(case.edit_script), pformat(actual_edit_script))
-            )
-        test.description = 'test_edit_script - %s' % case.name
-        yield test
+def _edit_script_cases():
+    return [
+        case for case in parse_cases(test_cases + one_way_test_cases)
+        if case.edit_script
+    ]
 
 
-def test_html_patch():
-    for case in parse_cases(all_test_cases):
-        # check that applying the diff gives back the same new_html
-        def test():
-            edit_script = []
-            edit_script = get_edit_script(case.old_html, case.new_html)
-            edited_html = html_patch(case.old_html, edit_script)
-            assert_html_equal(
-                remove_attributes(edited_html),
-                remove_attributes(case.new_html),
-            )
-        test.description = 'test_html_patch - %s' % case.name
-        yield test
+@pytest.mark.parametrize('case', _edit_script_cases(), ids=lambda c: c.name)
+def test_edit_script(case):
+    actual_edit_script = get_edit_script(case.old_html, case.new_html)
+    assert case.edit_script == actual_edit_script, (
+        'These edit scripts do not match:\n'
+        f'{pformat(case.edit_script)}\n!=\n{pformat(actual_edit_script)}'
+    )
 
 
-def test_cases_sanity():
-    # check that removing the ins and del markup gives the original
-    sane_cases = (test_cases + reverse_test_cases + one_way_test_cases)
-    for case in parse_cases(sane_cases):
-        def test():
-            assert_strip_changes(
-                case.old_html,
-                case.new_html,
-                case.target_changes,
-            )
-        test.description = 'test_cases_sanity - %s' % case.name
-        yield test
+@pytest.mark.parametrize('case', list(parse_cases(all_test_cases)), ids=lambda c: c.name)
+def test_html_patch(case):
+    edit_script = get_edit_script(case.old_html, case.new_html)
+    edited_html = html_patch(case.old_html, edit_script)
+    assert_html_equal(
+        remove_attributes(edited_html),
+        remove_attributes(case.new_html),
+    )
 
 
-def test_html_diff():
-    for case in parse_cases(all_test_cases):
-        def test():
-            changes = diff(case.old_html, case.new_html, cutoff=0.0)
-            assert_html_equal(changes, case.target_changes)
-        test.description = 'test_html_diff - %s' % case.name
-        yield test
+@pytest.mark.parametrize(
+    'case',
+    list(parse_cases(test_cases + reverse_test_cases + one_way_test_cases)),
+    ids=lambda c: c.name,
+)
+def test_cases_sanity(case):
+    assert_strip_changes(case.old_html, case.new_html, case.target_changes)
+
+
+@pytest.mark.parametrize('case', list(parse_cases(all_test_cases)), ids=lambda c: c.name)
+def test_html_diff(case):
+    changes = diff(case.old_html, case.new_html, cutoff=0.0)
+    assert_html_equal(changes, case.target_changes)

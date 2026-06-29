@@ -3,7 +3,7 @@ from textwrap import dedent
 import pytest
 
 from htmltreediff.html import diff
-from htmltreediff.tests import assert_html_equal
+from htmltreediff.test_core import assert_html_equal
 from htmltreediff.changes import distribute
 from htmltreediff.html import add_class_to_empty_del_tags, fix_lists, fix_tables
 from htmltreediff.util import (
