@@ -8,7 +8,7 @@ the word-level diff back into the new document's block structure.
 """
 import difflib
 
-from htmltreediff.text import split_text, is_text_junk, WordMatcher
+from htmltreediff.text import split_text, is_text_junk
 from htmltreediff.util import (
     BLOCK_TAGS,
     copy_dom,
@@ -302,7 +302,7 @@ def _rebuild_node_with_diff(node, diff_html):
         node.appendChild(imported)
 
 
-def textonly_diff(old_html, new_html, cutoff=0.0, pretty=False):
+def textonly_diff(old_html, new_html, pretty=False):
     """Diff two HTML documents showing only text content changes.
 
     The output uses the new document's HTML structure, with <ins> and <del>
@@ -322,14 +322,6 @@ def textonly_diff(old_html, new_html, cutoff=0.0, pretty=False):
     # Flatten blocks to word sequences
     old_words, _old_block_map = _blocks_to_words(old_blocks)
     new_words, new_block_map = _blocks_to_words(new_blocks)
-
-    # Check overall similarity
-    sm = WordMatcher(a=old_words, b=new_words)
-    if cutoff > 0 and sm.text_ratio() < cutoff:
-        return (
-            '<h2>The differences from the previous version are too large to '
-            'show concisely.</h2>'
-        )
 
     # Word-level diff across the entire flattened text
     word_sm = difflib.SequenceMatcher(is_text_junk, old_words, new_words)
@@ -379,4 +371,3 @@ def textonly_diff(old_html, new_html, cutoff=0.0, pretty=False):
                 body.appendChild(del_node)
 
     return minidom_tostring(result_dom, pretty=pretty)
-

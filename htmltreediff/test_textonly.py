@@ -1,114 +1,108 @@
-# Tests for the textonly=True diff mode.
 from htmltreediff.html import diff
 
 
-def test_block_tag_rename_no_change():
-    """A block tag rename with same text should show no changes."""
-    assert diff('<p>foo</p>', '<h2>foo</h2>', textonly=True) == '<p>foo</p>'
-
-
-def test_block_tag_rename_with_text_change():
-    """Block tag rename with different text still shows text change."""
-    result = diff('<p>old text</p>', '<h2>new text</h2>', textonly=True)
-    assert '<del>old</del>' in result
-    assert '<ins>new</ins>' in result
-
-
-def test_inline_formatting_added():
-    """Adding inline formatting (strong) shows as a change."""
-    result = diff('<p>foo</p>', '<p><strong>foo</strong></p>', textonly=True)
-    assert '<ins>' in result or '<del>' in result
-
-
-def test_inline_formatting_removed():
-    """Removing inline formatting (em) shows as a change."""
-    result = diff('<p><em>foo</em></p>', '<p>foo</p>', textonly=True)
-    assert '<ins>' in result or '<del>' in result
-
-
-def test_span_preserved_in_textonly_mode():
-    """Span tags are preserved and diffed in textonly mode."""
-    result = diff('<p>foo</p>', '<p><span class="x">foo</span></p>',
-                  textonly=True)
-    assert 'span' in result
-
-
-def test_multiple_blocks_same_text():
-    """Multiple block elements with same text show no changes."""
-    result = diff('<p>hello</p><p>world</p>',
-                  '<h1>hello</h1><div>world</div>', textonly=True)
+def test_block_tag_rename_shows_no_diff():
+    result = diff('<p>foo</p>', '<h2>foo</h2>', textonly=True)
     assert '<del>' not in result
     assert '<ins>' not in result
 
 
-def test_nested_block_rename():
-    """Nested block tag rename with same content shows no changes."""
-    result = diff('<div><p>hello</p></div>',
-                  '<section><p>hello</p></section>', textonly=True)
-    assert '<del>' not in result
-    assert '<ins>' not in result
-
-
-def test_textonly_text_diff_within_same_block():
-    """Text changes within a block element are shown."""
-    result = diff('<p>The quick brown fox</p>',
-                  '<p>The very quick brown fox</p>', textonly=True)
-    assert '<ins>' in result
-    assert 'very' in result
-
-
-def test_textonly_does_not_affect_normal_mode():
-    """Normal mode (textonly=False) still shows block tag changes."""
-    result = diff('<p>foo</p>', '<h2>foo</h2>', textonly=False)
-    assert '<del>' in result
-    assert '<ins>' in result
-
-
-def test_textonly_with_table():
-    """Table content changes still work in textonly mode."""
-    result = diff(
-        '<table><tr><td>... A ...</td></tr></table>',
-        '<table><tr><td>... B ...</td></tr></table>',
-        textonly=True,
-    )
-    assert '<del>A</del>' in result
-    assert '<ins>B</ins>' in result
-
-
-def test_textonly_with_list():
-    """List content changes still work in textonly mode."""
-    result = diff(
-        '<ol><li>AAA</li><li>BBB</li></ol>',
-        '<ol><li>ZZZ</li><li>BBB</li></ol>',
-        textonly=True,
-    )
-    assert '<del>AAA</del>' in result
-    assert '<ins>ZZZ</ins>' in result
-
-
-def test_textonly_plaintext_mode_unaffected():
-    """Plaintext mode is not affected by textonly."""
-    result = diff('The quick brown fox', 'The very quick brown fox',
-                  plaintext=True, textonly=True)
-    assert '<ins> very</ins>' in result
-
-
-def test_textonly_heading_levels():
-    """Changing heading levels with same text shows no change."""
+def test_heading_level_change_shows_no_diff():
     result = diff('<h1>Title</h1>', '<h3>Title</h3>', textonly=True)
     assert '<del>' not in result
     assert '<ins>' not in result
 
 
-def test_textonly_add_new_block():
-    """Adding a new block element still shows as insertion."""
+def test_multiple_block_renames_show_no_diff():
+    result = diff('<p>hello</p><p>world</p>', '<h1>hello</h1><div>world</div>', textonly=True)
+    assert '<del>' not in result
+    assert '<ins>' not in result
+
+
+def test_nested_block_rename_shows_no_diff():
+    result = diff('<div><p>hello</p></div>', '<section><p>hello</p></section>', textonly=True)
+    assert '<del>' not in result
+    assert '<ins>' not in result
+
+
+def test_block_tag_rename_with_text_change_shows_text_diff():
+    result = diff('<p>old text</p>', '<h2>new text</h2>', textonly=True)
+    assert result == '<h2><del>old</del><ins>new</ins> text</h2>'
+
+
+def test_text_change_within_block():
+    result = diff(
+        '<p>The quick brown fox</p>',
+        '<p>The very quick brown fox</p>',
+        textonly=True,
+    )
+    assert result == '<p>The<ins> very</ins> quick brown fox</p>'
+
+
+def test_inline_formatting_added_shows_no_diff():
+    result = diff('<p>foo</p>', '<p><strong>foo</strong></p>', textonly=True)
+    assert '<ins>' not in result
+    assert '<del>' not in result
+
+
+def test_inline_formatting_removed_shows_no_diff():
+    result = diff('<p><em>foo</em></p>', '<p>foo</p>', textonly=True)
+    assert '<ins>' not in result
+    assert '<del>' not in result
+
+
+def test_added_block_shows_insertion():
     result = diff('<p>one</p>', '<p>one</p><p>two</p>', textonly=True)
-    assert '<ins>' in result
-    assert 'two' in result
+    assert result == '<p>one</p><p><ins>two</ins></p>'
 
 
-def test_textonly_remove_block():
-    """Removing a block element still shows as deletion."""
-    result = diff('<p>one</p><p>two</p>', '<p>one</p>', textonly=True)
-    assert '<del>' in result
-    assert 'two' in result
+def test_removed_block_shows_deletion():
+    result = diff(
+        '<p>alpha</p><p>beta</p><p>gamma</p>',
+        '<p>alpha</p><p>gamma</p>',
+        textonly=True,
+    )
+    assert result == '<p>alpha</p><del class="block-deleted">beta </del><p>gamma</p>'
+
+
+def test_table_cell_text_change():
+    result = diff(
+        '<table><tr><td>... A ...</td></tr></table>',
+        '<table><tr><td>... B ...</td></tr></table>',
+        textonly=True,
+    )
+    assert result == '<table><tr><td>... <del>A</del><ins>B</ins> ...</td></tr></table>'
+
+
+def test_list_item_text_change():
+    result = diff(
+        '<ol><li>AAA</li><li>BBB</li></ol>',
+        '<ol><li>ZZZ</li><li>BBB</li></ol>',
+        textonly=True,
+    )
+    assert result == '<ol><li><del>AAA</del><ins>ZZZ</ins></li><li>BBB</li></ol>'
+
+
+def test_br_treated_as_space_separator():
+    result = diff('<p>A<br/>B</p>', '<p>A<br/>B</p>', textonly=True)
+    assert result == '<p>A<br/>B</p>'
+
+
+def test_br_with_text_change_after_br():
+    result = diff('<p>pizza<br/>slice</p>', '<p>pizza<br/>pie</p>', textonly=True)
+    assert result == '<p>pizza<br/><del>slice</del><ins>pie</ins></p>'
+
+
+def test_words_not_concatenated_across_block_boundaries():
+    result = diff('<p>incident</p><p>WHEN</p>', '<p>incident</p><p>WHEN</p>', textonly=True)
+    assert result == '<p>incident</p><p>WHEN</p>'
+
+
+def test_text_change_in_second_block():
+    result = diff('<p>hello</p><p>world</p>', '<p>hello</p><p>earth</p>', textonly=True)
+    assert result == '<p>hello</p><p><del>world</del><ins>earth</ins></p>'
+
+
+def test_plaintext_mode_takes_precedence_over_textonly():
+    result = diff('hello world', 'hello brave world', plaintext=True, textonly=True)
+    assert result == 'hello <ins>brave </ins>world'
