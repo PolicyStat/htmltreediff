@@ -165,19 +165,31 @@ def _word_diff_to_block_diffs(opcodes, old_words, new_words,
                     block_pieces[block_idx] = []
                 del_text = ''.join(old_words[i1:i2])
                 block_pieces[block_idx].append('<del>%s</del>' % del_text)
+                # Group consecutive new words per block into single ins tags
+                ins_parts = {}  # block_idx -> list of word strings
                 for j in range(j1, j2):
                     if _is_boundary_space(j):
+                        # Flush any accumulated ins for the current block
+                        for b_idx, parts in ins_parts.items():
+                            if parts:
+                                if b_idx not in block_pieces:
+                                    block_pieces[b_idx] = []
+                                block_pieces[b_idx].append(
+                                    '<ins>%s</ins>' % ''.join(parts)
+                                )
+                        ins_parts = {}
                         continue
                     b_idx = new_block_map[j][0]
-                    if b_idx != block_idx:
+                    if b_idx not in ins_parts:
+                        ins_parts[b_idx] = []
+                    ins_parts[b_idx].append(new_words[j])
+                # Flush remaining
+                for b_idx, parts in ins_parts.items():
+                    if parts:
                         if b_idx not in block_pieces:
                             block_pieces[b_idx] = []
                         block_pieces[b_idx].append(
-                            '<ins>%s</ins>' % new_words[j]
-                        )
-                    else:
-                        block_pieces[block_idx].append(
-                            '<ins>%s</ins>' % new_words[j]
+                            '<ins>%s</ins>' % ''.join(parts)
                         )
         elif tag == 'delete':
             # Words in old but not in new.
@@ -217,15 +229,30 @@ def _word_diff_to_block_diffs(opcodes, old_words, new_words,
                     deleted_before[block_idx] = []
                 deleted_before[block_idx].append(del_text)
         elif tag == 'insert':
+            # Group consecutive inserted words per block into single ins tags
+            ins_parts = {}  # block_idx -> list of word strings
             for j in range(j1, j2):
                 if _is_boundary_space(j):
+                    for b_idx, parts in ins_parts.items():
+                        if parts:
+                            if b_idx not in block_pieces:
+                                block_pieces[b_idx] = []
+                            block_pieces[b_idx].append(
+                                '<ins>%s</ins>' % ''.join(parts)
+                            )
+                    ins_parts = {}
                     continue
                 block_idx = new_block_map[j][0]
-                if block_idx not in block_pieces:
-                    block_pieces[block_idx] = []
-                block_pieces[block_idx].append(
-                    '<ins>%s</ins>' % new_words[j]
-                )
+                if block_idx not in ins_parts:
+                    ins_parts[block_idx] = []
+                ins_parts[block_idx].append(new_words[j])
+            for b_idx, parts in ins_parts.items():
+                if parts:
+                    if b_idx not in block_pieces:
+                        block_pieces[b_idx] = []
+                    block_pieces[b_idx].append(
+                        '<ins>%s</ins>' % ''.join(parts)
+                    )
 
     # Determine which blocks have inline changes
     import re
