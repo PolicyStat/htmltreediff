@@ -1,5 +1,6 @@
 from textwrap import dedent
 
+import pytest
 
 from htmltreediff.html import diff
 from htmltreediff.tests import assert_html_equal
@@ -78,14 +79,11 @@ preprocessing_cases = [
 ]
 
 
-def test_preprocessing():
-    for description, old_html, target, target_raw, in preprocessing_cases:
-        def test():
-            dom = parse_minidom(old_html)
-            assert minidom_tostring(dom) == target
-            assert remove_xml_declaration(dom.toxml()) == target_raw
-        test.description = description
-        yield test
+@pytest.mark.parametrize('description,old_html,target,target_raw', preprocessing_cases, ids=lambda x: x if isinstance(x, str) else None)
+def test_preprocessing(description, old_html, target, target_raw):
+    dom = parse_minidom(old_html)
+    assert minidom_tostring(dom) == target
+    assert remove_xml_declaration(dom.toxml()) == target_raw
 
 
 def test_remove_insignificant_text_nodes():
@@ -170,44 +168,37 @@ def test_cutoff():
         'concisely.</h2>')
 
 
-def test_html_diff_pretty():
-    cases = [
-        (
-            'Simple Addition',
-            '<h1>one</h1>',
-            '<h1>one</h1><h2>two</h2>',
-            dedent('''
-                <h1>one</h1>
-                <ins>
-                  <h2>two</h2>
-                </ins>
-            ''').strip(),
-        ),
-    ]
-    for test_name, old_html, new_html, pretty_changes in cases:
-        def test():
-            changes = diff(old_html, new_html, cutoff=0.0, pretty=True)
-            assert pretty_changes == changes
-        test.description = 'test_html_diff_pretty - %s' % test_name
-        yield test
+@pytest.mark.parametrize('test_name,old_html,new_html,pretty_changes', [
+    (
+        'Simple Addition',
+        '<h1>one</h1>',
+        '<h1>one</h1><h2>two</h2>',
+        dedent('''
+            <h1>one</h1>
+            <ins>
+              <h2>two</h2>
+            </ins>
+        ''').strip(),
+    ),
+], ids=lambda x: x if isinstance(x, str) else None)
+def test_html_diff_pretty(test_name, old_html, new_html, pretty_changes):
+    changes = diff(old_html, new_html, cutoff=0.0, pretty=True)
+    assert pretty_changes == changes
 
 
-def test_distribute():
-    cases = [
-        ('<ins><li>A</li><li><em>B</em></li></ins>',
-         '<li><ins>A</ins></li><li><ins><em>B</em></ins></li>'),
-    ]
-    for original, distributed in cases:
-        def test(original, distributed):
-            original = parse_minidom(original)
-            distributed = parse_minidom(distributed)
-            node = get_location(original, [0])
-            distribute(node)
-            assert_html_equal(
-                minidom_tostring(original),
-                minidom_tostring(distributed),
-            )
-        yield test, original, distributed
+@pytest.mark.parametrize('original,distributed', [
+    ('<ins><li>A</li><li><em>B</em></li></ins>',
+     '<li><ins>A</ins></li><li><ins><em>B</em></ins></li>'),
+])
+def test_distribute(original, distributed):
+    original = parse_minidom(original)
+    distributed = parse_minidom(distributed)
+    node = get_location(original, [0])
+    distribute(node)
+    assert_html_equal(
+        minidom_tostring(original),
+        minidom_tostring(distributed),
+    )
 
 
 def test_get_location():
@@ -220,8 +211,7 @@ def test_get_location():
         pass
 
 
-def test_fix_lists():
-    cases = [
+@pytest.mark.parametrize('test_name,changes,fixed_changes', [
         (
             'simple list item insert',
             '''
@@ -512,21 +502,16 @@ def test_fix_lists():
             </ol>
             ''',
         ),
-    ]
-    for test_name, changes, fixed_changes in cases:
-        changes = collapse(changes)
-        fixed_changes = collapse(fixed_changes)
-
-        def test():
-            changes_dom = parse_minidom(changes)
-            fix_lists(changes_dom)
-            assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
-        test.description = 'test_fix_lists - %s' % test_name
-        yield test
+], ids=lambda x: x if isinstance(x, str) else None)
+def test_fix_lists(test_name, changes, fixed_changes):
+    changes = collapse(changes)
+    fixed_changes = collapse(fixed_changes)
+    changes_dom = parse_minidom(changes)
+    fix_lists(changes_dom)
+    assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
 
 
-def test_fix_tables():
-    cases = [
+@pytest.mark.parametrize('test_name,changes,fixed_changes', [
         (
             'add a table row',
             '''
@@ -724,17 +709,13 @@ def test_fix_tables():
             </table>
             ''',
         ),
-    ]
-    for test_name, changes, fixed_changes in cases:
-        changes = collapse(changes)
-        fixed_changes = collapse(fixed_changes)
-
-        def test():
-            changes_dom = parse_minidom(changes, strict_xml=True)
-            fix_tables(changes_dom)
-            assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
-        test.description = 'test_fix_tables - %s' % test_name
-        yield test
+], ids=lambda x: x if isinstance(x, str) else None)
+def test_fix_tables(test_name, changes, fixed_changes):
+    changes = collapse(changes)
+    fixed_changes = collapse(fixed_changes)
+    changes_dom = parse_minidom(changes, strict_xml=True)
+    fix_tables(changes_dom)
+    assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
 
 
 def test_diff_focused_on_changed_cells_when_colgroup_added():
@@ -825,8 +806,7 @@ def test_similar_rows_not_misaligned_without_colgroup():
     assert diff(old_html, new_html) == expected
 
 
-def test_add_class_to_empty_del_tags():
-    cases = [
+@pytest.mark.parametrize('test_name,test_input,expected_result', [
         (
             'empty del tag',
             '<del></del>',
@@ -848,11 +828,8 @@ def test_add_class_to_empty_del_tags():
             '<del> abc </del>',
         ),
 
-    ]
-    for test_name, test_input, expected_result in cases:
-        def test():
-            dom = parse_minidom(test_input, strict_xml=True)
-            add_class_to_empty_del_tags(dom)
-            assert_html_equal(minidom_tostring(dom), expected_result)
-        test.description = 'test_add_class_to_empty_del_tags - %s' % test_name
-        yield test
+], ids=lambda x: x if isinstance(x, str) else None)
+def test_add_class_to_empty_del_tags(test_name, test_input, expected_result):
+    dom = parse_minidom(test_input, strict_xml=True)
+    add_class_to_empty_del_tags(dom)
+    assert_html_equal(minidom_tostring(dom), expected_result)
