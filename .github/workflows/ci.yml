@@ -24,8 +24,6 @@ jobs:
           pip install -e .
       - name: Run tests
         run: pytest --doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=92
-      - name: Run linter
-        run: flake8 htmltreediff
 
   lint:
     runs-on: ubuntu-latest
