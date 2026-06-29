@@ -28,7 +28,7 @@ def full_split(text, regex):
 
 
 def multi_split(text, regexes):
-    """
+    r"""
     Split the text by the given regexes, in priority order.
 
     Make sure that the regex is parenthesized so that matches are returned in
