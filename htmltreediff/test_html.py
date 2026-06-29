@@ -79,7 +79,11 @@ preprocessing_cases = [
 ]
 
 
-@pytest.mark.parametrize('description,old_html,target,target_raw', preprocessing_cases, ids=lambda x: x if isinstance(x, str) else None)
+@pytest.mark.parametrize(
+    'description,old_html,target,target_raw',
+    preprocessing_cases,
+    ids=lambda x: x if isinstance(x, str) else None
+)
 def test_preprocessing(description, old_html, target, target_raw):
     dom = parse_minidom(old_html)
     assert minidom_tostring(dom) == target
@@ -211,7 +215,9 @@ def test_get_location():
         pass
 
 
-@pytest.mark.parametrize('test_name,changes,fixed_changes', [
+@pytest.mark.parametrize(
+    'test_name,changes,fixed_changes',
+    [
         (
             'simple list item insert',
             '''
@@ -502,7 +508,9 @@ def test_get_location():
             </ol>
             ''',
         ),
-], ids=lambda x: x if isinstance(x, str) else None)
+    ],
+    ids=lambda x: x if isinstance(x, str) else None
+)
 def test_fix_lists(test_name, changes, fixed_changes):
     changes = collapse(changes)
     fixed_changes = collapse(fixed_changes)
@@ -511,7 +519,9 @@ def test_fix_lists(test_name, changes, fixed_changes):
     assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
 
 
-@pytest.mark.parametrize('test_name,changes,fixed_changes', [
+@pytest.mark.parametrize(
+    'test_name,changes,fixed_changes',
+    [
         (
             'add a table row',
             '''
@@ -709,7 +719,9 @@ def test_fix_lists(test_name, changes, fixed_changes):
             </table>
             ''',
         ),
-], ids=lambda x: x if isinstance(x, str) else None)
+    ],
+    ids=lambda x: x if isinstance(x, str) else None
+)
 def test_fix_tables(test_name, changes, fixed_changes):
     changes = collapse(changes)
     fixed_changes = collapse(fixed_changes)
@@ -806,7 +818,9 @@ def test_similar_rows_not_misaligned_without_colgroup():
     assert diff(old_html, new_html) == expected
 
 
-@pytest.mark.parametrize('test_name,test_input,expected_result', [
+@pytest.mark.parametrize(
+    'test_name,test_input,expected_result',
+    [
         (
             'empty del tag',
             '<del></del>',
@@ -828,7 +842,9 @@ def test_similar_rows_not_misaligned_without_colgroup():
             '<del> abc </del>',
         ),
 
-], ids=lambda x: x if isinstance(x, str) else None)
+    ],
+    ids=lambda x: x if isinstance(x, str) else None
+)
 def test_add_class_to_empty_del_tags(test_name, test_input, expected_result):
     dom = parse_minidom(test_input, strict_xml=True)
     add_class_to_empty_del_tags(dom)
