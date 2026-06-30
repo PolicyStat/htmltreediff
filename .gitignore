@@ -9,7 +9,6 @@ __pycache__/
 
 build
 dist
-*.whl
 *.egg-info
 .tox
 .workflow
