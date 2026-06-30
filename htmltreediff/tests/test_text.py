@@ -4,17 +4,12 @@ from htmltreediff.html import diff
 from htmltreediff.text import split_text
 
 
-@pytest.mark.parametrize('text,target', [
-    ('word',
-     ['word']),
-    ('two words',
-     ['two', ' ', 'words']),
-    ('abcdef12',
-     ['abcdef', '12']),
-    ('entity&quot;s',
-     ['entity', '&quot;', 's']),
-    ('stuff&#160;stuff',
-     ['stuff', '&#160;', 'stuff']),
+cases = [
+    ('word', ['word']),
+    ('two words', ['two', ' ', 'words']),
+    ('abcdef12', ['abcdef', '12']),
+    ('entity&quot;s', ['entity', '&quot;', 's']),
+    ('stuff&#160;stuff', ['stuff', '&#160;', 'stuff']),
     (
         'Stuff with an ampersand A&B stuff. Stuff with a semicolon; more stuff.',  # noqa
         [
@@ -23,17 +18,15 @@ from htmltreediff.text import split_text
             'a', ' ', 'semicolon', ';', ' ', 'more', ' ', 'stuff', '.',
         ],
     ),
-    ("we're excited",
-     ["we're", " ", "excited"]),
-    ('dial 1-800-555-1234',
-     ['dial', ' ', '1-800-555-1234']),
-    ('Effective 1/2/2003',
-     ['Effective', ' ', '1/2/2003']),
-    (u'über français',
-     [u'über', u' ', u'français']),
-    (u'em dashes \u2013  \u2013',
-     [u'em', u' ', u'dashes', u' ', u'\u2013', u'  ', u'\u2013']),
-])
+    ("we're excited", ["we're", " ", "excited"]),
+    ('dial 1-800-555-1234', ['dial', ' ', '1-800-555-1234']),
+    ('Effective 1/2/2003', ['Effective', ' ', '1/2/2003']),
+    (u'über français', [u'über', u' ', u'français']),
+    (u'em dash \u2013  \u2013', [u'em', u' ', u'dash', u' ', u'\u2013', u'  ', u'\u2013']),
+]
+
+
+@pytest.mark.parametrize('text,target', cases)
 def test_text_split(text, target):
     assert split_text(text) == target
 
