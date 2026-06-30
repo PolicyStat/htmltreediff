@@ -12,8 +12,7 @@ from htmltreediff.util import (
     get_location,
 )
 
-from htmltreediff.tests.util import collapse
-from htmltreediff.tests.test_core import assert_html_equal
+from htmltreediff.tests.util import assert_html_equal, collapse
 
 
 # Preprocessing
