@@ -1,17 +1,11 @@
 #! /usr/bin/env python
-# coding: utf-8
 
 import codecs
 import os
 
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup, find_packages
+from setuptools import setup, find_packages
 
-long_description = codecs.open("README.rst", "r", "utf-8").read()
+long_description = codecs.open("README.md", "r", "utf-8").read()
 
 
 def strip_comments(line):
@@ -38,6 +32,7 @@ setup(
     scripts=[],
     zip_safe=False,
     install_requires=list(get_requirements('requirements/default.txt')),
+    python_requires=">=3.8",
     tests_require=list(get_requirements('requirements/testing.txt')),
     cmdclass={},
     classifiers=[
@@ -46,6 +41,12 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Text Processing :: Markup :: HTML",
         "Topic :: Text Processing :: Markup :: XML",
     ],

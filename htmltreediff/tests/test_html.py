@@ -1,0 +1,843 @@
+from textwrap import dedent
+
+import pytest
+
+from htmltreediff.changes import distribute
+from htmltreediff.html import add_class_to_empty_del_tags, diff, fix_lists, fix_tables
+from htmltreediff.util import (
+    parse_minidom,
+    minidom_tostring,
+    remove_insignificant_text_nodes,
+    remove_xml_declaration,
+    get_location,
+)
+
+from htmltreediff.tests.util import assert_html_equal, collapse
+
+
+# Preprocessing
+
+preprocessing_cases = [
+    (
+        'empty document',
+        '',
+        '',
+        '<body/>'
+    ),
+    (
+        'tail text',
+        '<h1>one</h1>tail',
+        '<h1>one</h1>tail',
+        '<body><h1>one</h1>tail</body>',
+    ),
+    (
+        'ignore comments',
+        '<div/><!--comment one--><!--comment two-->',
+        '<div/>',
+        '<body><div/></body>',
+    ),
+    (
+        'ignore style tags',
+        '<style type="text/css"></style>',
+        '',
+        '<body/>',
+    ),
+    (
+        'style tag in a block of text',
+        '<p>xxx<style type="text/css"></style>yyy</p>',
+        '<p>xxxyyy</p>',
+        '<body><p>xxxyyy</p></body>',
+    ),
+    (
+        'ignore font tags',
+        '<font type="text/css"></font>',
+        '',
+        '<body/>',
+    ),
+    (
+        'ignore comment tags',
+        '<!-- test -->',
+        '',
+        '<body/>',
+    ),
+    (
+        'illegal text nodes inside tables are not removed',
+        '''
+        <table>
+            illegal text
+            <tbody>
+                <tr>
+                    <td>stuff</td>
+                </tr>
+            </tbody>
+        </table>
+        ''',
+        '<table> illegal text <tbody><tr><td>stuff</td></tr></tbody></table>',
+        '<body><table> illegal text <tbody><tr><td>stuff</td></tr></tbody></table></body>',  # noqa E501
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    'description,old_html,target,target_raw',
+    preprocessing_cases,
+    ids=[case[0] for case in preprocessing_cases],
+)
+def test_preprocessing(description, old_html, target, target_raw):
+    dom = parse_minidom(old_html)
+    assert minidom_tostring(dom) == target
+    assert remove_xml_declaration(dom.toxml()) == target_raw
+
+
+def test_remove_insignificant_text_nodes():
+    html = dedent('''
+        <html>
+            <head />
+            <body>
+                <p>
+                    one <em>two</em> <strong>three</strong>
+                </p>
+                <table>
+                    <tr>
+                        <td>stuff</td>
+                    </tr>
+                </table>
+            </body>
+        </html>
+    ''')
+    target_html = ('<p> one <em>two</em> <strong>three</strong> </p> '
+                   '<table><tr><td>stuff</td></tr></table>')
+
+    dom = parse_minidom(html)
+    remove_insignificant_text_nodes(dom)
+    html = minidom_tostring(dom)
+    assert html == target_html
+
+    # Check that it is idempotent.
+    dom = parse_minidom(html)
+    remove_insignificant_text_nodes(dom)
+    html = minidom_tostring(dom)
+    assert html == target_html
+
+
+def test_remove_insignificant_text_nodes_nbsp():
+    html = dedent('''
+        <table>
+        <tbody>
+        <tr>
+            <td> </td>
+            <td>&#160;</td>
+            <td>&nbsp;</td>
+            AAA
+        </tr>
+        </tbody>
+        </table>
+    ''')
+    dom = parse_minidom(html)
+    remove_insignificant_text_nodes(dom)
+    html = minidom_tostring(dom)
+    assert html == (
+        '<table><tbody><tr><td> </td><td> </td><td> </td>'
+        ' AAA </tr></tbody></table>'
+    )
+
+
+# Post-processing
+
+def test_other_node_type_inserted():
+    changes = diff(
+        u'<p>foo</p>',
+        u'<p>foo bar</p><?xml version=\'1.0\' encoding=\'utf-8\'?>',
+    )
+    assert changes == '<p>foo<ins> bar</ins></p>'
+
+
+def test_non_printing_characters():
+    changes = diff(
+        '',
+        '<div><p\x01>\x1Ffoo\x21</p>\x00<p>bar</p></div>',
+    )
+    assert changes == '<ins><div><p> foo!</p> <p>bar</p></div></ins>'
+
+
+def test_cutoff():
+    changes = diff(
+        '<h1>totally</h1>',
+        '<h2>different</h2>',
+        cutoff=0.2,
+    )
+    assert changes == (
+        '<h2>The differences from the previous version are too large to show '
+        'concisely.</h2>')
+
+
+cases = [
+    (
+        'Simple Addition',
+        '<h1>one</h1>',
+        '<h1>one</h1><h2>two</h2>',
+        dedent('''
+            <h1>one</h1>
+            <ins>
+              <h2>two</h2>
+            </ins>
+        ''').strip(),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    'test_name,old_html,new_html,pretty_changes',
+    cases,
+    ids=[case[0] for case in cases],
+)
+def test_html_diff_pretty(test_name, old_html, new_html, pretty_changes):
+    changes = diff(old_html, new_html, cutoff=0.0, pretty=True)
+    assert pretty_changes == changes
+
+
+@pytest.mark.parametrize('original,distributed', [
+    ('<ins><li>A</li><li><em>B</em></li></ins>',
+     '<li><ins>A</ins></li><li><ins><em>B</em></ins></li>'),
+])
+def test_distribute(original, distributed):
+    original = parse_minidom(original)
+    distributed = parse_minidom(distributed)
+    node = get_location(original, [0])
+    distribute(node)
+    assert_html_equal(
+        minidom_tostring(original),
+        minidom_tostring(distributed),
+    )
+
+
+def test_get_location():
+    html = '<ins><li>A</li><li><em>B</em></li></ins>'
+    original = parse_minidom(html)
+    try:
+        get_location(original, [10])
+        raise AssertionError('ValueError not raised')
+    except ValueError:
+        pass
+
+
+cases = [
+    (
+        'simple list item insert',
+        '''
+        <ol>
+          <li>one</li>
+          <ins><li>two</li></ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item insert',
+        '''
+        <ol>
+          <li>one</li>
+          <ins>
+            <li>two</li>
+            <li>three</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+          <li><ins>three</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'simple list item delete afterward',
+        '''
+        <ol>
+          <li>one</li>
+          <del><li>one and a half</li></del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li class="del-li"><del>one and a half</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'simple list item delete first',
+        '''
+        <ol>
+          <del><li>one half</li></del>
+          <li>one</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one half</del></li>
+          <li>one</li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item delete first',
+        '''
+        <ol>
+          <del>
+            <li>one third</li>
+            <li>two thirds</li>
+          </del>
+          <li>one</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one third</del></li>
+          <li class="del-li"><del>two thirds</del></li>
+          <li>one</li>
+        </ol>
+        '''
+    ),
+    (
+        'insert and delete separately',
+        '''
+        <ol>
+          <li>one</li>
+          <ins><li>two</li></ins>
+          <li>three</li>
+          <del><li>three point five</li></del>
+          <li>four</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+          <li>three</li>
+          <li class="del-li"><del>three point five</del></li>
+          <li>four</li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item delete',
+        '''
+        <ol>
+          <li>one</li>
+          <del>
+            <li>two</li>
+            <li>three</li>
+          </del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li class="del-li"><del>two</del></li>
+          <li class="del-li"><del>three</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'delete only list item',
+        '''
+        <ol>
+          <del>
+            <li>one</li>
+          </del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI full content change does not add another LI',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            <li>BBB</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li><del>AAA</del><ins>BBB</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI full content change keeps attrs',
+        '''
+        <ol>
+          <del>
+            <li class="old" id="foo">AAA</li>
+          </del>
+          <ins>
+            <li class="new">BBB</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="new"><del>AAA</del><ins>BBB</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI changes markup internalization fix not done if next tag is not an insert',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+            <li><strong>BBB</strong></li>
+          <ins>
+            <li>CCC</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <li><strong>BBB</strong></li>
+            <li><ins>CCC</ins></li>
+        </ol>
+        ''',
+    ),
+    (
+        'LI after del must be ins',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <del>
+            <li>BBB</li>
+          </del>
+          <ins>
+            <li>CCC</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <li><del>BBB</del><ins>CCC</ins></li>
+        </ol>
+        ''',
+    ),
+    (
+        'LI changes markup internalization fix not performed if next tags child is not li',  # noqa E501
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            <foo>BBB</foo>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <ins>
+                <foo>BBB</foo>
+            </ins>
+        </ol>
+        ''',
+    ),
+    (
+        'LI changes markup internalization fix not performed if next tags is text',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            BBB
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <ins>
+                BBB
+            </ins>
+        </ol>
+        ''',
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    'test_name,changes,fixed_changes',
+    cases,
+    ids=[case[0] for case in cases],
+)
+def test_fix_lists(test_name, changes, fixed_changes):
+    changes = collapse(changes)
+    fixed_changes = collapse(fixed_changes)
+    changes_dom = parse_minidom(changes)
+    fix_lists(changes_dom)
+    assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
+
+
+cases = [
+    (
+        'add a table row',
+        '''
+        <table>
+          <tr><td>A</td></tr>
+          <ins><tr><td>B</td></tr></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tr><td>A</td></tr>
+          <tr><td><ins>B</ins></td></tr>
+        </table>
+        '''
+    ),
+    (
+        'tbody inside ins is distributed',
+        '''
+        <table>
+          <ins><tbody><tr><td>A</td></tr></tbody></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><ins>A</ins></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tbody inside del is distributed',
+        '''
+        <table>
+          <del><tbody><tr><td>A</td></tr></tbody></del>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><del>A</del></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead inside ins is distributed',
+        '''
+        <table>
+          <ins><thead><tr><th>Header</th></tr></thead></ins>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><ins>Header</ins></th></tr></thead>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead inside del is distributed',
+        '''
+        <table>
+          <del><thead><tr><th>Header</th></tr></thead></del>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><del>Header</del></th></tr></thead>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tfoot inside ins is distributed',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <ins><tfoot><tr><td>Footer</td></tr></tfoot></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <tfoot><tr><td><ins>Footer</ins></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tfoot inside del is distributed',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <del><tfoot><tr><td>Footer</td></tr></tfoot></del>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <tfoot><tr><td><del>Footer</del></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tbody del and ins pair is internalized',
+        '''
+        <table>
+          <del><tbody><tr><td>old data</td></tr></tbody></del>
+          <ins><tbody><tr><td>new data</td></tr></tbody></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><del>old data</del><ins>new data</ins></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead del and ins pair is internalized',
+        '''
+        <table>
+          <del><thead><tr><th>old header</th></tr></thead></del>
+          <ins><thead><tr><th>new header</th></tr></thead></ins>
+          <tbody><tr><td>data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><del>old header</del><ins>new header</ins></th></tr></thead>
+          <tbody><tr><td>data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tfoot del and ins pair is internalized',
+        '''
+        <table>
+          <tbody><tr><td>data</td></tr></tbody>
+          <del><tfoot><tr><td>old footer</td></tr></tfoot></del>
+          <ins><tfoot><tr><td>new footer</td></tr></tfoot></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>data</td></tr></tbody>
+          <tfoot><tr><td><del>old footer</del><ins>new footer</ins></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tr del and ins pair is internalized',
+        '''
+        <table>
+          <tbody>
+            <del><tr><td>old row</td></tr></del>
+            <ins><tr><td>new row</td></tr></ins>
+          </tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody>
+            <tr><td><del>old row</del><ins>new row</ins></td></tr>
+          </tbody>
+        </table>
+        '''
+    ),
+    (
+        'remove ins and del tags at the wrong level of the table',
+        '''
+        <table>
+            <ins> </ins><del> </del>
+            <thead>
+                <ins> </ins><del> </del>
+            </thead>
+            <tfoot>
+                <ins> </ins><del> </del>
+            </tfoot>
+            <tbody>
+                <ins> </ins><del> </del>
+                <tr>
+                    <ins> </ins><del> </del>
+                    <td><ins>A</ins></td>
+                </tr>
+            </tbody>
+        </table>
+        ''',
+        '''
+        <table>
+            <thead></thead>
+            <tfoot></tfoot>
+            <tbody>
+                <tr>
+                    <td><ins>A</ins></td>
+                </tr>
+            </tbody>
+        </table>
+        ''',
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    'test_name,changes,fixed_changes',
+    cases,
+    ids=[case[0] for case in cases],
+)
+def test_fix_tables(test_name, changes, fixed_changes):
+    changes = collapse(changes)
+    fixed_changes = collapse(fixed_changes)
+    changes_dom = parse_minidom(changes, strict_xml=True)
+    fix_tables(changes_dom)
+    assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
+
+
+def test_diff_focused_on_changed_cells_when_colgroup_added():
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>old value</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td>new value</td></tr>'
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>unchanged</td></tr>'
+        '<tr><td>Beta</td><td><del>old</del><ins>new</ins> value</td></tr>'
+        '</tbody></table>'
+    )
+    assert diff(old_html, new_html) == expected
+
+
+def test_similar_rows_not_misaligned_with_colgroup():
+    """
+    When a colgroup is added and rows share boilerplate text, pairwise
+    fuzzy matching should align each old row to its positional counterpart
+    rather than misaligning due to non-transitive text similarity.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><colgroup><col/><col/><col/><col/></colgroup><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert diff(old_html, new_html) == expected
+
+
+def test_similar_rows_not_misaligned_without_colgroup():
+    """
+    Same non-transitive fuzzy equality problem as above, but triggered
+    without a colgroup -- every row has a small change so no exact matches
+    exist and all rows go through fuzzy matching.
+
+    The text lengths here are tuned to trigger SequenceMatcher misalignment
+    in the old code path; do not shorten them.
+    """
+    old_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: check</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: check</td><td>Rinse.</td></tr>'
+        '</tbody></table>'
+    )
+    new_html = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: changed1</td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: changed2</td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: changed3</td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    expected = (
+        '<table><tbody>'
+        '<tr><td>Alpha</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed1</ins></td><td>Long notes requiring careful monitoring and administration throughout procedure.</td></tr>'  # noqa E501
+        '<tr><td>Beta</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed2</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '<tr><td>Gamma</td><td>shared setup text</td><td>Rate: <del>check</del><ins>changed3</ins></td><td>Rinse.</td></tr>'  # noqa E501
+        '</tbody></table>'
+    )
+    assert diff(old_html, new_html) == expected
+
+
+cases = [
+    (
+        'empty del tag',
+        '<del></del>',
+        '<del class="empty"/>',
+    ),
+    (
+        'del tag with space',
+        '<del> </del>',
+        '<del class="empty"> </del>',
+    ),
+    (
+        'del tag with child',
+        '<del> <p> </p> </del>',
+        '<del> <p> </p> </del>',
+    ),
+    (
+        'del tag with spaces and characters',
+        '<del> abc </del>',
+        '<del> abc </del>',
+    ),
+
+]
+
+
+@pytest.mark.parametrize(
+    'test_name,test_input,expected_result',
+    cases,
+    ids=[case[0] for case in cases],
+)
+def test_add_class_to_empty_del_tags(test_name, test_input, expected_result):
+    dom = parse_minidom(test_input, strict_xml=True)
+    add_class_to_empty_del_tags(dom)
+    assert_html_equal(minidom_tostring(dom), expected_result)
