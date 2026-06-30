@@ -12,7 +12,7 @@ jobs:
       matrix:
         include:
           - python-version: "3.8"
-            lxml-version: "4.2.5"
+            lxml-spec: "lxml==4.2.5"
           # lxml v4
           - python-version: "3.8"
             lxml-spec: "lxml>=4,<5"
