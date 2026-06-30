@@ -82,7 +82,7 @@ preprocessing_cases = [
 @pytest.mark.parametrize(
     'description,old_html,target,target_raw',
     preprocessing_cases,
-    ids=lambda x: x if isinstance(x, str) else None
+    ids=[case[0] for case in preprocessing_cases],
 )
 def test_preprocessing(description, old_html, target, target_raw):
     dom = parse_minidom(old_html)
@@ -172,7 +172,7 @@ def test_cutoff():
         'concisely.</h2>')
 
 
-@pytest.mark.parametrize('test_name,old_html,new_html,pretty_changes', [
+cases = [
     (
         'Simple Addition',
         '<h1>one</h1>',
@@ -184,7 +184,14 @@ def test_cutoff():
             </ins>
         ''').strip(),
     ),
-], ids=lambda x: x if isinstance(x, str) else None)
+]
+
+
+@pytest.mark.parametrize(
+    'test_name,old_html,new_html,pretty_changes',
+    cases,
+    ids=[case[0] for case in cases],
+)
 def test_html_diff_pretty(test_name, old_html, new_html, pretty_changes):
     changes = diff(old_html, new_html, cutoff=0.0, pretty=True)
     assert pretty_changes == changes
@@ -215,301 +222,304 @@ def test_get_location():
         pass
 
 
+cases = [
+    (
+        'simple list item insert',
+        '''
+        <ol>
+          <li>one</li>
+          <ins><li>two</li></ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item insert',
+        '''
+        <ol>
+          <li>one</li>
+          <ins>
+            <li>two</li>
+            <li>three</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+          <li><ins>three</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'simple list item delete afterward',
+        '''
+        <ol>
+          <li>one</li>
+          <del><li>one and a half</li></del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li class="del-li"><del>one and a half</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'simple list item delete first',
+        '''
+        <ol>
+          <del><li>one half</li></del>
+          <li>one</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one half</del></li>
+          <li>one</li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item delete first',
+        '''
+        <ol>
+          <del>
+            <li>one third</li>
+            <li>two thirds</li>
+          </del>
+          <li>one</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one third</del></li>
+          <li class="del-li"><del>two thirds</del></li>
+          <li>one</li>
+        </ol>
+        '''
+    ),
+    (
+        'insert and delete separately',
+        '''
+        <ol>
+          <li>one</li>
+          <ins><li>two</li></ins>
+          <li>three</li>
+          <del><li>three point five</li></del>
+          <li>four</li>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li><ins>two</ins></li>
+          <li>three</del>
+          <li class="del-li"><del>three point five</del></li>
+          <li>four</li>
+        </ol>
+        '''
+    ),
+    (
+        'multiple list item delete',
+        '''
+        <ol>
+          <li>one</li>
+          <del>
+            <li>two</li>
+            <li>three</li>
+          </del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li>one</li>
+          <li class="del-li"><del>two</del></li>
+          <li class="del-li"><del>three</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'delete only list item',
+        '''
+        <ol>
+          <del>
+            <li>one</li>
+          </del>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="del-li"><del>one</del></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI full content change does not add another LI',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            <li>BBB</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li><del>AAA</del><ins>BBB</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI full content change keeps attrs',
+        '''
+        <ol>
+          <del>
+            <li class="old" id="foo">AAA</li>
+          </del>
+          <ins>
+            <li class="new">BBB</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+          <li class="new"><del>AAA</del><ins>BBB</ins></li>
+        </ol>
+        '''
+    ),
+    (
+        'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+            <li><strong>BBB</strong></li>
+          <ins>
+            <li>CCC</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <li><strong>BBB</strong></li>
+            <li><ins>CCC</ins></li>
+        </ol>
+        ''',
+    ),
+    (
+        'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+            <li><strong>BBB</strong></li>
+          <ins>
+            <li>CCC</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <li><strong>BBB</strong></li>
+            <li><ins>CCC</ins></li>
+        </ol>
+        ''',
+    ),
+    (
+        'LI after del must be ins',
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <del>
+            <li>BBB</li>
+          </del>
+          <ins>
+            <li>CCC</li>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <li><del>BBB</del><ins>CCC</ins></li>
+        </ol>
+        ''',
+    ),
+    (
+        'LI changes markup internalization fix not performed if next tags child is not li',  # noqa
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            <foo>BBB</foo>
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <ins>
+                <foo>BBB</foo>
+            </ins>
+        </ol>
+        ''',
+    ),
+    (
+        'LI changes markup internalization fix not performed if next tags is text',  # noqa
+        '''
+        <ol>
+          <del>
+            <li>AAA</li>
+          </del>
+          <ins>
+            BBB
+          </ins>
+        </ol>
+        ''',
+        '''
+        <ol>
+            <li class="del-li">
+                <del>AAA</del>
+            </li>
+            <ins>
+                BBB
+            </ins>
+        </ol>
+        ''',
+    ),
+]
+
+
 @pytest.mark.parametrize(
     'test_name,changes,fixed_changes',
-    [
-        (
-            'simple list item insert',
-            '''
-            <ol>
-              <li>one</li>
-              <ins><li>two</li></ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li>one</li>
-              <li><ins>two</ins></li>
-            </ol>
-            '''
-        ),
-        (
-            'multiple list item insert',
-            '''
-            <ol>
-              <li>one</li>
-              <ins>
-                <li>two</li>
-                <li>three</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li>one</li>
-              <li><ins>two</ins></li>
-              <li><ins>three</ins></li>
-            </ol>
-            '''
-        ),
-        (
-            'simple list item delete afterward',
-            '''
-            <ol>
-              <li>one</li>
-              <del><li>one and a half</li></del>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li>one</li>
-              <li class="del-li"><del>one and a half</del></li>
-            </ol>
-            '''
-        ),
-        (
-            'simple list item delete first',
-            '''
-            <ol>
-              <del><li>one half</li></del>
-              <li>one</li>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li class="del-li"><del>one half</del></li>
-              <li>one</li>
-            </ol>
-            '''
-        ),
-        (
-            'multiple list item delete first',
-            '''
-            <ol>
-              <del>
-                <li>one third</li>
-                <li>two thirds</li>
-              </del>
-              <li>one</li>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li class="del-li"><del>one third</del></li>
-              <li class="del-li"><del>two thirds</del></li>
-              <li>one</li>
-            </ol>
-            '''
-        ),
-        (
-            'insert and delete separately',
-            '''
-            <ol>
-              <li>one</li>
-              <ins><li>two</li></ins>
-              <li>three</li>
-              <del><li>three point five</li></del>
-              <li>four</li>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li>one</li>
-              <li><ins>two</ins></li>
-              <li>three</del>
-              <li class="del-li"><del>three point five</del></li>
-              <li>four</li>
-            </ol>
-            '''
-        ),
-        (
-            'multiple list item delete',
-            '''
-            <ol>
-              <li>one</li>
-              <del>
-                <li>two</li>
-                <li>three</li>
-              </del>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li>one</li>
-              <li class="del-li"><del>two</del></li>
-              <li class="del-li"><del>three</del></li>
-            </ol>
-            '''
-        ),
-        (
-            'delete only list item',
-            '''
-            <ol>
-              <del>
-                <li>one</li>
-              </del>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li class="del-li"><del>one</del></li>
-            </ol>
-            '''
-        ),
-        (
-            'LI full content change does not add another LI',
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-              <ins>
-                <li>BBB</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li><del>AAA</del><ins>BBB</ins></li>
-            </ol>
-            '''
-        ),
-        (
-            'LI full content change keeps attrs',
-            '''
-            <ol>
-              <del>
-                <li class="old" id="foo">AAA</li>
-              </del>
-              <ins>
-                <li class="new">BBB</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-              <li class="new"><del>AAA</del><ins>BBB</ins></li>
-            </ol>
-            '''
-        ),
-        (
-            'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-                <li><strong>BBB</strong></li>
-              <ins>
-                <li>CCC</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-                <li class="del-li">
-                    <del>AAA</del>
-                </li>
-                <li><strong>BBB</strong></li>
-                <li><ins>CCC</ins></li>
-            </ol>
-            ''',
-        ),
-        (
-            'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-                <li><strong>BBB</strong></li>
-              <ins>
-                <li>CCC</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-                <li class="del-li">
-                    <del>AAA</del>
-                </li>
-                <li><strong>BBB</strong></li>
-                <li><ins>CCC</ins></li>
-            </ol>
-            ''',
-        ),
-        (
-            'LI after del must be ins',
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-              <del>
-                <li>BBB</li>
-              </del>
-              <ins>
-                <li>CCC</li>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-                <li class="del-li">
-                    <del>AAA</del>
-                </li>
-                <li><del>BBB</del><ins>CCC</ins></li>
-            </ol>
-            ''',
-        ),
-        (
-            'LI changes markup internalization fix not performed if next tags child is not li',  # noqa
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-              <ins>
-                <foo>BBB</foo>
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-                <li class="del-li">
-                    <del>AAA</del>
-                </li>
-                <ins>
-                    <foo>BBB</foo>
-                </ins>
-            </ol>
-            ''',
-        ),
-        (
-            'LI changes markup internalization fix not performed if next tags is text',  # noqa
-            '''
-            <ol>
-              <del>
-                <li>AAA</li>
-              </del>
-              <ins>
-                BBB
-              </ins>
-            </ol>
-            ''',
-            '''
-            <ol>
-                <li class="del-li">
-                    <del>AAA</del>
-                </li>
-                <ins>
-                    BBB
-                </ins>
-            </ol>
-            ''',
-        ),
-    ],
-    ids=lambda x: x if isinstance(x, str) else None
+    cases,
+    ids=[case[0] for case in cases],
 )
 def test_fix_lists(test_name, changes, fixed_changes):
     changes = collapse(changes)
@@ -519,208 +529,211 @@ def test_fix_lists(test_name, changes, fixed_changes):
     assert_html_equal(minidom_tostring(changes_dom), fixed_changes)
 
 
+cases = [
+    (
+        'add a table row',
+        '''
+        <table>
+          <tr><td>A</td></tr>
+          <ins><tr><td>B</td></tr></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tr><td>A</td></tr>
+          <tr><td><ins>B</ins></td></tr>
+        </table>
+        '''
+    ),
+    (
+        'tbody inside ins is distributed',
+        '''
+        <table>
+          <ins><tbody><tr><td>A</td></tr></tbody></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><ins>A</ins></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tbody inside del is distributed',
+        '''
+        <table>
+          <del><tbody><tr><td>A</td></tr></tbody></del>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><del>A</del></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead inside ins is distributed',
+        '''
+        <table>
+          <ins><thead><tr><th>Header</th></tr></thead></ins>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><ins>Header</ins></th></tr></thead>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead inside del is distributed',
+        '''
+        <table>
+          <del><thead><tr><th>Header</th></tr></thead></del>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><del>Header</del></th></tr></thead>
+          <tbody><tr><td>Data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tfoot inside ins is distributed',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <ins><tfoot><tr><td>Footer</td></tr></tfoot></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <tfoot><tr><td><ins>Footer</ins></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tfoot inside del is distributed',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <del><tfoot><tr><td>Footer</td></tr></tfoot></del>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>Data</td></tr></tbody>
+          <tfoot><tr><td><del>Footer</del></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tbody del and ins pair is internalized',
+        '''
+        <table>
+          <del><tbody><tr><td>old data</td></tr></tbody></del>
+          <ins><tbody><tr><td>new data</td></tr></tbody></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td><del>old data</del><ins>new data</ins></td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'thead del and ins pair is internalized',
+        '''
+        <table>
+          <del><thead><tr><th>old header</th></tr></thead></del>
+          <ins><thead><tr><th>new header</th></tr></thead></ins>
+          <tbody><tr><td>data</td></tr></tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <thead><tr><th><del>old header</del><ins>new header</ins></th></tr></thead>
+          <tbody><tr><td>data</td></tr></tbody>
+        </table>
+        '''
+    ),
+    (
+        'tfoot del and ins pair is internalized',
+        '''
+        <table>
+          <tbody><tr><td>data</td></tr></tbody>
+          <del><tfoot><tr><td>old footer</td></tr></tfoot></del>
+          <ins><tfoot><tr><td>new footer</td></tr></tfoot></ins>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody><tr><td>data</td></tr></tbody>
+          <tfoot><tr><td><del>old footer</del><ins>new footer</ins></td></tr></tfoot>
+        </table>
+        '''
+    ),
+    (
+        'tr del and ins pair is internalized',
+        '''
+        <table>
+          <tbody>
+            <del><tr><td>old row</td></tr></del>
+            <ins><tr><td>new row</td></tr></ins>
+          </tbody>
+        </table>
+        ''',
+        '''
+        <table>
+          <tbody>
+            <tr><td><del>old row</del><ins>new row</ins></td></tr>
+          </tbody>
+        </table>
+        '''
+    ),
+    (
+        'remove ins and del tags at the wrong level of the table',
+        '''
+        <table>
+            <ins> </ins><del> </del>
+            <thead>
+                <ins> </ins><del> </del>
+            </thead>
+            <tfoot>
+                <ins> </ins><del> </del>
+            </tfoot>
+            <tbody>
+                <ins> </ins><del> </del>
+                <tr>
+                    <ins> </ins><del> </del>
+                    <td><ins>A</ins></td>
+                </tr>
+            </tbody>
+        </table>
+        ''',
+        '''
+        <table>
+            <thead></thead>
+            <tfoot></tfoot>
+            <tbody>
+                <tr>
+                    <td><ins>A</ins></td>
+                </tr>
+            </tbody>
+        </table>
+        ''',
+    ),
+]
+
+
 @pytest.mark.parametrize(
     'test_name,changes,fixed_changes',
-    [
-        (
-            'add a table row',
-            '''
-            <table>
-              <tr><td>A</td></tr>
-              <ins><tr><td>B</td></tr></ins>
-            </table>
-            ''',
-            '''
-            <table>
-              <tr><td>A</td></tr>
-              <tr><td><ins>B</ins></td></tr>
-            </table>
-            '''
-        ),
-        (
-            'tbody inside ins is distributed',
-            '''
-            <table>
-              <ins><tbody><tr><td>A</td></tr></tbody></ins>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td><ins>A</ins></td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'tbody inside del is distributed',
-            '''
-            <table>
-              <del><tbody><tr><td>A</td></tr></tbody></del>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td><del>A</del></td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'thead inside ins is distributed',
-            '''
-            <table>
-              <ins><thead><tr><th>Header</th></tr></thead></ins>
-              <tbody><tr><td>Data</td></tr></tbody>
-            </table>
-            ''',
-            '''
-            <table>
-              <thead><tr><th><ins>Header</ins></th></tr></thead>
-              <tbody><tr><td>Data</td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'thead inside del is distributed',
-            '''
-            <table>
-              <del><thead><tr><th>Header</th></tr></thead></del>
-              <tbody><tr><td>Data</td></tr></tbody>
-            </table>
-            ''',
-            '''
-            <table>
-              <thead><tr><th><del>Header</del></th></tr></thead>
-              <tbody><tr><td>Data</td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'tfoot inside ins is distributed',
-            '''
-            <table>
-              <tbody><tr><td>Data</td></tr></tbody>
-              <ins><tfoot><tr><td>Footer</td></tr></tfoot></ins>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td>Data</td></tr></tbody>
-              <tfoot><tr><td><ins>Footer</ins></td></tr></tfoot>
-            </table>
-            '''
-        ),
-        (
-            'tfoot inside del is distributed',
-            '''
-            <table>
-              <tbody><tr><td>Data</td></tr></tbody>
-              <del><tfoot><tr><td>Footer</td></tr></tfoot></del>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td>Data</td></tr></tbody>
-              <tfoot><tr><td><del>Footer</del></td></tr></tfoot>
-            </table>
-            '''
-        ),
-        (
-            'tbody del and ins pair is internalized',
-            '''
-            <table>
-              <del><tbody><tr><td>old data</td></tr></tbody></del>
-              <ins><tbody><tr><td>new data</td></tr></tbody></ins>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td><del>old data</del><ins>new data</ins></td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'thead del and ins pair is internalized',
-            '''
-            <table>
-              <del><thead><tr><th>old header</th></tr></thead></del>
-              <ins><thead><tr><th>new header</th></tr></thead></ins>
-              <tbody><tr><td>data</td></tr></tbody>
-            </table>
-            ''',
-            '''
-            <table>
-              <thead><tr><th><del>old header</del><ins>new header</ins></th></tr></thead>
-              <tbody><tr><td>data</td></tr></tbody>
-            </table>
-            '''
-        ),
-        (
-            'tfoot del and ins pair is internalized',
-            '''
-            <table>
-              <tbody><tr><td>data</td></tr></tbody>
-              <del><tfoot><tr><td>old footer</td></tr></tfoot></del>
-              <ins><tfoot><tr><td>new footer</td></tr></tfoot></ins>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody><tr><td>data</td></tr></tbody>
-              <tfoot><tr><td><del>old footer</del><ins>new footer</ins></td></tr></tfoot>
-            </table>
-            '''
-        ),
-        (
-            'tr del and ins pair is internalized',
-            '''
-            <table>
-              <tbody>
-                <del><tr><td>old row</td></tr></del>
-                <ins><tr><td>new row</td></tr></ins>
-              </tbody>
-            </table>
-            ''',
-            '''
-            <table>
-              <tbody>
-                <tr><td><del>old row</del><ins>new row</ins></td></tr>
-              </tbody>
-            </table>
-            '''
-        ),
-        (
-            'remove ins and del tags at the wrong level of the table',
-            '''
-            <table>
-                <ins> </ins><del> </del>
-                <thead>
-                    <ins> </ins><del> </del>
-                </thead>
-                <tfoot>
-                    <ins> </ins><del> </del>
-                </tfoot>
-                <tbody>
-                    <ins> </ins><del> </del>
-                    <tr>
-                        <ins> </ins><del> </del>
-                        <td><ins>A</ins></td>
-                    </tr>
-                </tbody>
-            </table>
-            ''',
-            '''
-            <table>
-                <thead></thead>
-                <tfoot></tfoot>
-                <tbody>
-                    <tr>
-                        <td><ins>A</ins></td>
-                    </tr>
-                </tbody>
-            </table>
-            ''',
-        ),
-    ],
-    ids=lambda x: x if isinstance(x, str) else None
+    cases,
+    ids=[case[0] for case in cases],
 )
 def test_fix_tables(test_name, changes, fixed_changes):
     changes = collapse(changes)
@@ -818,32 +831,35 @@ def test_similar_rows_not_misaligned_without_colgroup():
     assert diff(old_html, new_html) == expected
 
 
+cases = [
+    (
+        'empty del tag',
+        '<del></del>',
+        '<del class="empty"/>',
+    ),
+    (
+        'del tag with space',
+        '<del> </del>',
+        '<del class="empty"> </del>',
+    ),
+    (
+        'del tag with child',
+        '<del> <p> </p> </del>',
+        '<del> <p> </p> </del>',
+    ),
+    (
+        'del tag with spaces and characters',
+        '<del> abc </del>',
+        '<del> abc </del>',
+    ),
+
+]
+
+
 @pytest.mark.parametrize(
     'test_name,test_input,expected_result',
-    [
-        (
-            'empty del tag',
-            '<del></del>',
-            '<del class="empty"/>',
-        ),
-        (
-            'del tag with space',
-            '<del> </del>',
-            '<del class="empty"> </del>',
-        ),
-        (
-            'del tag with child',
-            '<del> <p> </p> </del>',
-            '<del> <p> </p> </del>',
-        ),
-        (
-            'del tag with spaces and characters',
-            '<del> abc </del>',
-            '<del> abc </del>',
-        ),
-
-    ],
-    ids=lambda x: x if isinstance(x, str) else None
+    cases,
+    ids=[case[0] for case in cases],
 )
 def test_add_class_to_empty_del_tags(test_name, test_input, expected_result):
     dom = parse_minidom(test_input, strict_xml=True)

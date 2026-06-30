@@ -38,7 +38,7 @@ def test_text_split(text, target):
     assert split_text(text) == target
 
 
-@pytest.mark.parametrize('description,old,new,changes', [
+cases = [
     (
         'sub-word changes',
         'The quick brown fox jumps over the lazy dog.',
@@ -94,6 +94,9 @@ def test_text_split(text, target):
     #     open('htmltreediff/fixtures/long_diff/after.txt').read(),
     #     open('htmltreediff/fixtures/long_diff/diff.html').read(),
     # ),
-], ids=lambda x: x if isinstance(x, str) else None)
+]
+
+
+@pytest.mark.parametrize('description,old,new,changes', cases, ids=[c[0] for c in cases])
 def test_text_diff(description, old, new, changes):
     assert diff(old, new, plaintext=True) == changes
