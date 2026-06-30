@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
 # Previously, coverage was at 100 but that is failing, so it's set to 98 for
 # now. We can increase it back to 100 once we have more tests.
+# TODO (GH#26): Increase coverage back to 100
 addopts = "--doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=98"
