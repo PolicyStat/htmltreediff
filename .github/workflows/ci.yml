@@ -12,7 +12,9 @@ jobs:
       matrix:
         include:
           - python-version: "3.8"
-            lxml-spec: "lxml==4.2.5"
+            # 4.2.5 support is still required but building from source is slow
+            # and has missing dependencies, so we use a prebuilt wheel
+            lxml-spec: "vendor/lxml-4.2.5-cp38-cp38-linux_x86_64.whl"
           # lxml v4
           - python-version: "3.8"
             lxml-spec: "lxml>=4,<5"
