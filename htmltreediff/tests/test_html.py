@@ -2,10 +2,8 @@ from textwrap import dedent
 
 import pytest
 
-from htmltreediff.html import diff
-from htmltreediff.test_core import assert_html_equal
 from htmltreediff.changes import distribute
-from htmltreediff.html import add_class_to_empty_del_tags, fix_lists, fix_tables
+from htmltreediff.html import add_class_to_empty_del_tags, diff, fix_lists, fix_tables
 from htmltreediff.util import (
     parse_minidom,
     minidom_tostring,
@@ -13,7 +11,9 @@ from htmltreediff.util import (
     remove_xml_declaration,
     get_location,
 )
-from htmltreediff.test_util import collapse
+
+from htmltreediff.tests.util import collapse
+from htmltreediff.tests.test_core import assert_html_equal
 
 
 # Preprocessing

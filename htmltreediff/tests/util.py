@@ -10,6 +10,7 @@ from htmltreediff.text import WordMatcher
 from htmltreediff.util import (
     attribute_dict,
     check_text_similarity,
+    html_equal,
     minidom_tostring,
     node_compare,
     parse_minidom,
@@ -17,6 +18,23 @@ from htmltreediff.util import (
     unwrap,
     walk_dom,
 )
+
+
+def assert_html_equal(a_html, b_html):
+    assert html_equal(a_html, b_html), (
+        f'These html documents are not equal:\n{a_html!r}\n====\n{b_html!r}'
+    )
+
+
+def assert_html_not_equal(a_html, b_html):
+    assert not html_equal(a_html, b_html), (
+        f'These html documents should not be equal:\n{a_html!r}\n====\n{b_html!r}'
+    )
+
+
+def assert_strip_changes(old_html, new_html, changes):
+    assert_html_equal(old_html, strip_changes_old(changes))
+    assert_html_equal(new_html, strip_changes_new(changes))
 
 
 def reverse_edit_script(edit_script):

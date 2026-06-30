@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-
 from htmltreediff.diff_core import (
     _has_fuzzy_hash_collisions,
     fuzzy_match_blocks,

@@ -1,7 +1,7 @@
-
-from htmltreediff.test_util import collapse
-from htmltreediff.util import parse_minidom, minidom_tostring
 from htmltreediff.changes import dom_diff
+from htmltreediff.util import parse_minidom, minidom_tostring
+
+from htmltreediff.tests.util import collapse
 
 test_cases = [
     (

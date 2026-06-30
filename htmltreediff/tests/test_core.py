@@ -8,19 +8,20 @@ from htmltreediff.util import (
     parse_minidom,
     parse_text,
     minidom_tostring,
-    html_equal,
     is_text,
 )
-from htmltreediff.test_util import (
-    reverse_edit_script,
-    reverse_changes_html,
+
+from htmltreediff.tests.util import (
+    assert_html_equal,
+    assert_html_not_equal,
+    assert_strip_changes,
+    collapse,
     get_edit_script,
     html_patch,
-    strip_changes_old,
-    strip_changes_new,
-    remove_attributes,
-    collapse,
     parse_cases,
+    remove_attributes,
+    reverse_changes_html,
+    reverse_edit_script,
 )
 
 # since the test cases get automatically reversed, only include insert cases,
@@ -1202,23 +1203,6 @@ reverse_test_cases = list(reverse_cases(test_cases))
 
 # Combined cases
 all_test_cases = (test_cases + reverse_test_cases + one_way_test_cases + insane_test_cases)
-
-
-def assert_html_equal(a_html, b_html):
-    assert html_equal(a_html, b_html), (
-        f'These html documents are not equal:\n{a_html!r}\n====\n{b_html!r}'
-    )
-
-
-def assert_html_not_equal(a_html, b_html):
-    assert not html_equal(a_html, b_html), (
-        f'These html documents should not be equal:\n{a_html!r}\n====\n{b_html!r}'
-    )
-
-
-def assert_strip_changes(old_html, new_html, changes):
-    assert_html_equal(old_html, strip_changes_old(changes))
-    assert_html_equal(new_html, strip_changes_new(changes))
 
 
 def test_parse_comments():
