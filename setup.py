@@ -5,7 +5,7 @@ import os
 
 from setuptools import setup, find_packages
 
-long_description = codecs.open("README.rst", "r", "utf-8").read()
+long_description = codecs.open("README.md", "r", "utf-8").read()
 
 
 def strip_comments(line):
