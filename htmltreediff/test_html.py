@@ -321,7 +321,7 @@ cases = [
         <ol>
           <li>one</li>
           <li><ins>two</ins></li>
-          <li>three</del>
+          <li>three</li>
           <li class="del-li"><del>three point five</del></li>
           <li>four</li>
         </ol>
