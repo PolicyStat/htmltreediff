@@ -73,7 +73,7 @@ preprocessing_cases = [
         </table>
         ''',
         '<table> illegal text <tbody><tr><td>stuff</td></tr></tbody></table>',
-        '<body><table> illegal text <tbody><tr><td>stuff</td></tr></tbody></table></body>',  # noqa
+        '<body><table> illegal text <tbody><tr><td>stuff</td></tr></tbody></table></body>',  # noqa E501
     ),
 ]
 
@@ -397,30 +397,7 @@ cases = [
         '''
     ),
     (
-        'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
-        '''
-        <ol>
-          <del>
-            <li>AAA</li>
-          </del>
-            <li><strong>BBB</strong></li>
-          <ins>
-            <li>CCC</li>
-          </ins>
-        </ol>
-        ''',
-        '''
-        <ol>
-            <li class="del-li">
-                <del>AAA</del>
-            </li>
-            <li><strong>BBB</strong></li>
-            <li><ins>CCC</ins></li>
-        </ol>
-        ''',
-    ),
-    (
-        'LI changes markup internalization fix not done if next tag is not an insert',  # noqa
+        'LI changes markup internalization fix not done if next tag is not an insert',
         '''
         <ol>
           <del>
@@ -467,7 +444,7 @@ cases = [
         ''',
     ),
     (
-        'LI changes markup internalization fix not performed if next tags child is not li',  # noqa
+        'LI changes markup internalization fix not performed if next tags child is not li',  # noqa E501
         '''
         <ol>
           <del>
@@ -490,7 +467,7 @@ cases = [
         ''',
     ),
     (
-        'LI changes markup internalization fix not performed if next tags is text',  # noqa
+        'LI changes markup internalization fix not performed if next tags is text',
         '''
         <ol>
           <del>
