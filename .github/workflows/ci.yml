@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements/default.txt -r requirements/testing.txt
           pip install -e .
       - name: Run tests
-        run: pytest --doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=99
+        run: pytest
 
   lint:
     runs-on: ubuntu-latest

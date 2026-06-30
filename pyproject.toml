@@ -1,0 +1,2 @@
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --cov=htmltreediff --cov-report=term-missing --cov-fail-under=99"
